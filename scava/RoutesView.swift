@@ -8,6 +8,7 @@ import SwiftUI
 
 struct RoutesView: View {
     @State private var showRouteDetail = false
+    @EnvironmentObject var gameViewModel: GameViewModel
     
     var body: some View {
         ScrollView {
@@ -46,7 +47,7 @@ struct RoutesView: View {
         .navigationTitle("Routes")
         .background(Color.red)
         .fullScreenCover(isPresented: $showRouteDetail) {
-            RouteDetailView()
+            RouteDetailView(gameViewModel: gameViewModel)
         }
     }
 }
@@ -69,4 +70,5 @@ struct RedGroupBoxStyle: GroupBoxStyle {
 
 #Preview {
     RoutesView()
+        .environmentObject(GameViewModel())
 }

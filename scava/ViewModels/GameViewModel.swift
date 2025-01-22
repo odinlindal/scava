@@ -81,7 +81,6 @@ class GameViewModel: ObservableObject {
         }
         
         print("📍 Checking location: \(location.coordinate)")
-        print("🎯 Active route: \(route.name)")
         
         for landmark in route.landmarks where !completedLandmarks.contains(landmark.id) {
             let landmarkLocation = CLLocation(latitude: landmark.latitude, longitude: landmark.longitude)
@@ -90,10 +89,8 @@ class GameViewModel: ObservableObject {
             print("📏 Distance to \(landmark.name): \(distance) meters (trigger radius: \(landmark.triggerRadius)m)")
             if distance <= landmark.triggerRadius {
                 print("❗️ Within range! Triggering question for \(landmark.name)")
-                DispatchQueue.main.async {
-                    self.currentLandmark = landmark
-                    self.showQuestion = true
-                }
+                currentLandmark = landmark
+                showQuestion = true
                 break
             }
         }
@@ -115,6 +112,7 @@ class GameViewModel: ObservableObject {
                 if allCompleted {
                     print("🎉 Route completed!")
                     showCompletionAlert = true
+                    currentLandmark = nil  // Clear current landmark
                 }
             }
         }
@@ -128,7 +126,3 @@ class GameViewModel: ObservableObject {
     }
 }
 
-#Preview {
-    MapView(gameViewModel: GameViewModel())
-        .environmentObject(GameViewModel())
-} 

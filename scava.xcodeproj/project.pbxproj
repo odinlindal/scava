@@ -27,6 +27,7 @@
 		5279CD6A2D3DAAD4005DDCC9 /* scava.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = scava.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5279CD7A2D3DAAD6005DDCC9 /* scavaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = scavaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5279CD842D3DAAD6005DDCC9 /* scavaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = scavaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		528B59D32D40D127006594A7 /* testloc.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = testloc.gpx; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -88,6 +89,7 @@
 		5279CD612D3DAAD4005DDCC9 = {
 			isa = PBXGroup;
 			children = (
+				528B59D32D40D127006594A7 /* testloc.gpx */,
 				5279CD6C2D3DAAD4005DDCC9 /* scava */,
 				5279CD7D2D3DAAD6005DDCC9 /* scavaTests */,
 				5279CD872D3DAAD6005DDCC9 /* scavaUITests */,

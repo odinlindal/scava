@@ -3,7 +3,14 @@ import MapKit
 
 struct RouteDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var gameViewModel: GameViewModel
+    @StateObject private var locationManager: LocationManager
     @State private var showStartRouteAlert = false
+    @AppStorage("selectedTab") var selectedTab: Int = 0
+    
+    init(gameViewModel: GameViewModel) {
+        _locationManager = StateObject(wrappedValue: LocationManager(gameViewModel: gameViewModel))
+    }
     
     private let routeLocation = CLLocationCoordinate2D(
         latitude: 47.3113,
@@ -81,7 +88,12 @@ struct RouteDetailView: View {
         .alert("Start Route", isPresented: $showStartRouteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Start") {
-                dismiss()
+                if let route = gameViewModel.routes.first {
+                    locationManager.startTracking()
+                    gameViewModel.startRoute(route)
+                    selectedTab = 1
+                    dismiss()
+                }
             }
         } message: {
             Text("Are you ready to begin this route?")
@@ -90,5 +102,7 @@ struct RouteDetailView: View {
 }
 
 #Preview {
-    RouteDetailView()
+    let gameViewModel = GameViewModel()
+    return RouteDetailView(gameViewModel: gameViewModel)
+        .environmentObject(gameViewModel)
 }

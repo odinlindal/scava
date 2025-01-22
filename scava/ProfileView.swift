@@ -115,6 +115,3 @@ struct ProfileView: View {
         .background(Color.red)
     }
 }
-#Preview {
-    RouteDetailView()
-}

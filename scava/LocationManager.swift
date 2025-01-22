@@ -15,15 +15,22 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         center: CLLocationCoordinate2D(latitude: 37.3361, longitude: -122.0380),
         span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
     )))
+    @Published var location: CLLocation?
+    private var gameViewModel: GameViewModel?
     
     private var isInitialLocation = true
     
-    override init() {
+    init(gameViewModel: GameViewModel) {
+        self.gameViewModel = gameViewModel
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.requestWhenInUseAuthorization()
+    }
+    
+    func startTracking() {
+        print("Starting location tracking")
         locationManager.startUpdatingLocation()
     }
     
@@ -39,8 +46,15 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
+        self.location = location
         
-        if isInitialLocation {
+        // Always update region when tracking
+        if gameViewModel?.isRouteActive == true {
+            region = .region(MKCoordinateRegion(
+                center: location.coordinate,
+                span: MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)  // Closer zoom
+            ))
+        } else if isInitialLocation {
             region = .region(MKCoordinateRegion(
                 center: location.coordinate,
                 span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
@@ -48,7 +62,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isInitialLocation = false
         }
         
-        locationManager.stopUpdatingLocation()
+        // Check location for route
+        if let gameViewModel = gameViewModel {
+            gameViewModel.checkLocation(location)
+        }
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -57,6 +74,9 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 }
+
 #Preview {
-    RouteDetailView()
+    let gameViewModel = GameViewModel()
+    return RouteDetailView(gameViewModel: gameViewModel)
+        .environmentObject(gameViewModel)
 }

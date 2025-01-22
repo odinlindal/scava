@@ -10,6 +10,9 @@ import MapKit
 import CoreLocation
 
 struct ContentView: View {
+    @StateObject private var gameViewModel = GameViewModel()
+    @AppStorage("selectedTab") var selectedTab: Int = 0
+    
     init() {
         // Set the tab bar to be red with white icons
         let tabBarAppearance = UITabBarAppearance()
@@ -41,7 +44,7 @@ struct ContentView: View {
     }
     
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 RoutesView()
                     .navigationBarTitleDisplayMode(.inline)
@@ -50,11 +53,13 @@ struct ContentView: View {
             .tabItem {
                 Label("Routes", systemImage: "map.fill")
             }
+            .tag(0)
             
-            MapView()
+            MapView(gameViewModel: gameViewModel)
                 .tabItem {
                     Label("Map", systemImage: "location.fill")
                 }
+                .tag(1)
             
             NavigationStack {
                 ProfileView()
@@ -64,8 +69,10 @@ struct ContentView: View {
             .tabItem {
                 Label("Profile", systemImage: "person.fill")
             }
+            .tag(2)
         }
         .tint(.white)
+        .environmentObject(gameViewModel)
     }
 }
 
