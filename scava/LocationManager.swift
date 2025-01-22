@@ -13,7 +13,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     @Published var region = MapCameraPosition.userLocation(fallback: MapCameraPosition.region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 37.3361, longitude: -122.0380),
-        span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )))
     @Published var location: CLLocation?
     private var gameViewModel: GameViewModel?
@@ -39,7 +39,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if let location = locationManager.location {
             region = .region(MKCoordinateRegion(
                 center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)
+                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
             ))
         }
     }
@@ -52,7 +52,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if gameViewModel?.isRouteActive == true {
             region = .region(MKCoordinateRegion(
                 center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.002, longitudeDelta: 0.002)  // Closer zoom
+                span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)  // Closer zoom
             ))
         } else if isInitialLocation {
             region = .region(MKCoordinateRegion(
@@ -73,10 +73,4 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             locationManager.startUpdatingLocation()
         }
     }
-}
-
-#Preview {
-    let gameViewModel = GameViewModel()
-    return RouteDetailView(gameViewModel: gameViewModel)
-        .environmentObject(gameViewModel)
 }

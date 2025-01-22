@@ -8,46 +8,78 @@ import SwiftUI
 
 struct RoutesView: View {
     @State private var showRouteDetail = false
+    @State private var selectedRoute: Route?
     @EnvironmentObject var gameViewModel: GameViewModel
     
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Image("grcroute")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(height: 120)
-                            .clipped()
-                            .cornerRadius(8)
-                        
-                        Text("Green River College")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                        
-                        Button(action: {
-                            showRouteDetail.toggle()
-                        }) {
-                            Text("View Route")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.white)
-                                .foregroundColor(.red)
-                                .cornerRadius(8)
+                ForEach(gameViewModel.routes) { route in
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 12) {
+                            if let imageURL = route.imageURL {
+                                Image(imageURL)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 120)
+                                    .clipped()
+                                    .cornerRadius(8)
+                            }
+                            
+                            Text(route.name)
+                                .font(.title2)
+                                .foregroundColor(.white)
+                            
+                            Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
+                                .foregroundColor(.white.opacity(0.8))
+                                .font(.caption)
+                            
+                            Button(action: {
+                                print("🔍 Selected route: \(route.name)")
+                                selectedRoute = route
+                                print("📍 Selected route data: \(selectedRoute?.name ?? "none")")
+                                DispatchQueue.main.async {
+                                    showRouteDetail = true
+                                }
+                            }) {
+                                Text("View Route")
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.white)
+                                    .foregroundColor(.red)
+                                    .cornerRadius(8)
+                            }
                         }
+                        .padding()
                     }
-                    .padding()
+                    .groupBoxStyle(RedGroupBoxStyle())
+                    .padding(.horizontal)
                 }
-                .groupBoxStyle(RedGroupBoxStyle())
-                .padding(.horizontal)
             }
             .padding(.vertical)
         }
         .navigationTitle("Routes")
         .background(Color.red)
-        .fullScreenCover(isPresented: $showRouteDetail) {
-            RouteDetailView(gameViewModel: gameViewModel)
+        .fullScreenCover(isPresented: $showRouteDetail, onDismiss: {
+            selectedRoute = nil
+        }) {
+            if let route = selectedRoute {
+                NavigationView {
+                    RouteDetailView(route: route, gameViewModel: gameViewModel)
+                }
+            } else {
+                VStack {
+                    Button("Go Back") {
+                        showRouteDetail = false
+                    }
+                    .padding()
+                    .background(Color.white)
+                    .foregroundColor(.red)
+                    .cornerRadius(10)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.red)
+            }
         }
     }
 }
@@ -66,9 +98,4 @@ struct RedGroupBoxStyle: GroupBoxStyle {
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
         )
     }
-}
-
-#Preview {
-    RoutesView()
-        .environmentObject(GameViewModel())
 }

@@ -13,12 +13,8 @@ struct MapView: View {
     @State private var showRoutePreview = false
     @State private var showRouteDetail = false
     @State private var userAnswer = ""
-    @State private var showCompletionAlert = false
-    
-    private let routeLocation = CLLocationCoordinate2D(
-        latitude: 47.3113,
-        longitude: -122.1780
-    )
+    @AppStorage("selectedTab") var selectedTab: Int = 0
+    @State private var showStartRouteAlert = false
     
     init(gameViewModel: GameViewModel) {
         _locationManager = StateObject(wrappedValue: LocationManager(gameViewModel: gameViewModel))
@@ -36,24 +32,7 @@ struct MapView: View {
                         Marker(landmark.name, coordinate: landmark.coordinate)
                             .tint(isCompleted ? .green : .red)
                     }
-                } else {
-                    // Show preview circle
-                    MapCircle(center: routeLocation, radius: 200)
-                        .foregroundStyle(.red.opacity(0.2))
-                        .stroke(.red, lineWidth: 2)
-                        .mapOverlayLevel(level: .aboveRoads)
                 }
-                
-                Annotation("", coordinate: routeLocation) {
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 200, height: 200) // Made it bigger to match circle size
-                        .contentShape(Circle())
-                        .onTapGesture {
-                            showRoutePreview = true
-                        }
-                }
-                .annotationTitles(.hidden)
             }
             .mapStyle(.standard(elevation: .realistic))
             .ignoresSafeArea()
@@ -67,7 +46,7 @@ struct MapView: View {
             VStack {
                 if gameViewModel.isRouteActive {
                     // Next landmark label at top
-                    Text("Next: \(gameViewModel.currentLandmark?.name ?? "Finding next landmark...")")
+                    Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding()
@@ -78,40 +57,10 @@ struct MapView: View {
                 
                 Spacer()
                 
-                if showRoutePreview {
-                    // Route Preview Card
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Green River College")
-                            .font(.headline)
-                            .foregroundColor(.black)
-                        
-                        Text("2.5 miles • Moderate")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        
-                        Button(action: {
-                            showRouteDetail = true
-                            showRoutePreview = false
-                        }) {
-                            Text("View Details")
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(Color.red)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
-                        }
-                    }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(12)
-                    .shadow(radius: 5)
-                    .padding()
-                }
-                
                 HStack {
                     if gameViewModel.isRouteActive {
                         Button(action: {
-                            gameViewModel.stopRoute()
+                            showStartRouteAlert = true
                         }) {
                             Text("End Route")
                                 .foregroundColor(.white)
@@ -162,14 +111,40 @@ struct MapView: View {
             }
         }
         .fullScreenCover(isPresented: $showRouteDetail) {
-            RouteDetailView(gameViewModel: gameViewModel)
+            if let route = gameViewModel.activeRoute {
+                RouteDetailView(route: route, gameViewModel: gameViewModel)
+            }
         }
-        .alert("Route Completed!", isPresented: $showCompletionAlert) {
+        .alert("End Route?", isPresented: $showStartRouteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("End Route", role: .destructive) {
+                withAnimation {
+                    gameViewModel.stopRoute()
+                    showRouteDetail = false
+                }
+            }
+        } message: {
+            Text("Are you sure you want to end this route?")
+        }
+        .alert("Route Completed!", isPresented: $gameViewModel.showCompletionAlert) {
             Button("Finish") {
-                gameViewModel.stopRoute()
+                print("🏁 Finishing route")
+                if gameViewModel.isRouteCompleted {
+                    withAnimation {
+                        gameViewModel.stopRoute()
+                        showRouteDetail = false
+                        selectedTab = 0
+                    }
+                }
             }
         } message: {
             Text("Congratulations! You've completed all landmarks on this route.")
+        }
+        .interactiveDismissDisabled(true)
+        .onChange(of: gameViewModel.isRouteActive) { _, isActive in
+            if !isActive {
+                showRouteDetail = false
+            }
         }
     }
 }

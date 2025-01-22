@@ -17,60 +17,64 @@ class GameViewModel: ObservableObject {
     }
     @Published var showCompletionAlert: Bool = false
     @Published var isRouteActive: Bool = false
+    @Published var isRouteCompleted = false
+    
+    private let firestoreService = FirestoreService()
     
     init() {
-        // Load sample routes for testing
-        let grcLandmarks = [
-            Landmark(
-                name: "Welcome Center",
-                latitude: 47.3119,
-                longitude: -122.1785,
-                triggerRadius: 100,  // Increased from 50 to 100 meters for easier testing
-                question: "How many floors does the Welcome Center have?",
-                correctAnswer: "2"
-            )
-            // Comment out other landmarks for now
-        ]
-        
-        routes = [
-            Route(
-                name: "Green River College Tour",
-                description: "Explore the historic Green River College campus and learn about its rich history through this interactive tour.",
-                difficulty: "Easy",
-                distance: 0.5,
-                estimatedTime: 30,
-                landmarks: grcLandmarks,
-                imageURL: "grcroute"
-            )
-        ]
-        
         // Load completed landmarks from UserDefaults
         if let saved = UserDefaults.standard.array(forKey: "CompletedLandmarks") as? [String] {
             completedLandmarks = Set(saved.compactMap { UUID(uuidString: $0) })
+        }
+        
+        // Fetch routes from Firestore
+        Task {
+            await fetchRoutes()
+        }
+    }
+    
+    @MainActor
+    func fetchRoutes() async {
+        do {
+            routes = try await firestoreService.fetchRoutes()
+            print("📱 Fetched \(routes.count) routes from Firestore")
+        } catch {
+            print("❌ Error fetching routes: \(error.localizedDescription)")
         }
     }
     
     func startRoute(_ route: Route) {
         print("🚀 Starting route: \(route.name)")
+        print("Previous route active state: \(isRouteActive)")
+        print("Previous route: \(activeRoute?.name ?? "none")")
+        
         stopRoute() // Clear any existing route state
         activeRoute = route
         isRouteActive = true
+        isRouteCompleted = false
+        
+        print("New route active state: \(isRouteActive)")
+        print("New active route: \(activeRoute?.name ?? "none")")
     }
     
     func stopRoute() {
-        print("🛑 Stopping route")
+        print("🛑 Stopping route - Stack trace:")
+        // Print the stack trace to see where this is called from
+        Thread.callStackSymbols.forEach { print($0) }
+        
         activeRoute = nil
         isRouteActive = false
         currentLandmark = nil
         showQuestion = false
         showCompletionAlert = false
-        completedLandmarks.removeAll() // Clear completed landmarks
+        isRouteCompleted = false
+        completedLandmarks.removeAll()
         saveProgress()
     }
     
     func checkLocation(_ location: CLLocation) {
         guard isRouteActive, let route = activeRoute else { 
-            print("🚫 No active route")
+            print("🚫 No active route - Active: \(isRouteActive), Route: \(activeRoute?.name ?? "none")")
             return 
         }
         
@@ -80,18 +84,29 @@ class GameViewModel: ObservableObject {
             return
         }
         
-        print("📍 Checking location: \(location.coordinate)")
+        // Check if all landmarks are completed
+        if completedLandmarks.count == route.landmarks.count {
+            print("🎉 All landmarks completed!")
+            isRouteCompleted = true
+            showCompletionAlert = true
+            return
+        }
         
-        for landmark in route.landmarks where !completedLandmarks.contains(landmark.id) {
-            let landmarkLocation = CLLocation(latitude: landmark.latitude, longitude: landmark.longitude)
-            let distance = location.distance(from: landmarkLocation)
-            
-            print("📏 Distance to \(landmark.name): \(distance) meters (trigger radius: \(landmark.triggerRadius)m)")
-            if distance <= landmark.triggerRadius {
-                print("❗️ Within range! Triggering question for \(landmark.name)")
-                currentLandmark = landmark
-                showQuestion = true
-                break
+        // Find the next uncompleted landmark
+        for landmark in route.landmarks {
+            if !completedLandmarks.contains(landmark.id) {
+                let landmarkLocation = CLLocation(
+                    latitude: landmark.latitude,
+                    longitude: landmark.longitude
+                )
+                
+                let distance = location.distance(from: landmarkLocation)
+                if distance <= landmark.triggerRadius {
+                    print("📍 Within range of landmark: \(landmark.name)")
+                    currentLandmark = landmark
+                    showQuestion = true
+                    break
+                }
             }
         }
     }
@@ -99,30 +114,32 @@ class GameViewModel: ObservableObject {
     func validateAnswer(_ answer: String) -> Bool {
         guard let landmark = currentLandmark else { return false }
         
-        let isCorrect = answer.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) ==
-            landmark.correctAnswer.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        
+        let isCorrect = answer.lowercased() == landmark.correctAnswer.lowercased()
         if isCorrect {
             completedLandmarks.insert(landmark.id)
-            saveProgress()
             
-            // Check if all landmarks are completed
-            if let route = activeRoute {
-                let allCompleted = Set(route.landmarks.map { $0.id }).isSubset(of: completedLandmarks)
-                if allCompleted {
-                    print("🎉 Route completed!")
-                    showCompletionAlert = true
-                    currentLandmark = nil  // Clear current landmark
-                }
+            // Check if this was the last landmark
+            if let route = activeRoute, completedLandmarks.count == route.landmarks.count {
+                print("🎉 Route completed!")
+                isRouteCompleted = true
+                showCompletionAlert = true
             }
         }
-        
         return isCorrect
     }
     
     private func saveProgress() {
         let completedIds = completedLandmarks.map { $0.uuidString }
         UserDefaults.standard.set(completedIds, forKey: "CompletedLandmarks")
+    }
+    
+    var nextLandmark: Landmark? {
+        guard let route = activeRoute else { return nil }
+        
+        // Find the first uncompleted landmark
+        return route.landmarks.first { landmark in
+            !completedLandmarks.contains(landmark.id)
+        }
     }
 }
 

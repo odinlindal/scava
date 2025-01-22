@@ -123,19 +123,3 @@ struct RoundedCorner: Shape {
         return Path(path.cgPath)
     }
 }
-
-#Preview {
-    QuestionView(
-        landmark: Landmark(
-            name: "Test Location",
-            latitude: 47.3113,
-            longitude: -122.1780,
-            question: "What is the test question?",
-            correctAnswer: "test"
-        ),
-        userAnswer: .constant(""),
-        isPresented: .constant(true),
-        keyboardFocus: .constant(false),
-        onSubmit: { _ in }
-    )
-} 
