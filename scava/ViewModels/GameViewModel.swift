@@ -19,6 +19,8 @@ class GameViewModel: ObservableObject {
     @Published var isRouteActive: Bool = false
     @Published var isRouteCompleted = false
     
+    private var randomizedLandmarks: [Landmark] = []
+    
     private let firestoreService = FirestoreService()
     
     init() {
@@ -49,19 +51,32 @@ class GameViewModel: ObservableObject {
         print("Previous route: \(activeRoute?.name ?? "none")")
         
         stopRoute() // Clear any existing route state
-        activeRoute = route
+        
+        // Create a new route with randomized landmarks
+        randomizedLandmarks = route.landmarks.shuffled()
+        activeRoute = Route(
+            id: route.id,
+            name: route.name,
+            description: route.description,
+            difficulty: route.difficulty,
+            distance: route.distance,
+            estimatedTime: route.estimatedTime,
+            landmarks: randomizedLandmarks,  // Use randomized landmarks
+            imageURL: route.imageURL,
+            latitude: route.latitude,
+            longitude: route.longitude
+        )
+        
         isRouteActive = true
         isRouteCompleted = false
         
         print("New route active state: \(isRouteActive)")
         print("New active route: \(activeRoute?.name ?? "none")")
+        print("🎲 Landmarks randomized: \(randomizedLandmarks.map { $0.name })")
     }
     
     func stopRoute() {
-        print("🛑 Stopping route - Stack trace:")
-        // Print the stack trace to see where this is called from
-        Thread.callStackSymbols.forEach { print($0) }
-        
+        print("🛑 Stopping route")
         activeRoute = nil
         isRouteActive = false
         currentLandmark = nil
@@ -69,6 +84,7 @@ class GameViewModel: ObservableObject {
         showCompletionAlert = false
         isRouteCompleted = false
         completedLandmarks.removeAll()
+        randomizedLandmarks.removeAll()  // Clear randomized landmarks
         saveProgress()
     }
     

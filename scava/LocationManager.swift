@@ -52,7 +52,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if gameViewModel?.isRouteActive == true {
             region = .region(MKCoordinateRegion(
                 center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)  // Closer zoom
+                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)  // Closer zoom
             ))
         } else if isInitialLocation {
             region = .region(MKCoordinateRegion(

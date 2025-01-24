@@ -26,11 +26,10 @@ struct MapView: View {
                 UserAnnotation()
                 
                 if gameViewModel.isRouteActive, let route = gameViewModel.activeRoute {
-                    // Show route landmarks
-                    ForEach(route.landmarks) { landmark in
-                        let isCompleted = gameViewModel.completedLandmarks.contains(landmark.id)
-                        Marker(landmark.name, coordinate: landmark.coordinate)
-                            .tint(isCompleted ? .green : .red)
+                    // Only show the next uncompleted landmark
+                    if let nextLandmark = gameViewModel.nextLandmark {
+                        Marker(nextLandmark.name, coordinate: nextLandmark.coordinate)
+                            .tint(.red)
                     }
                 }
             }
