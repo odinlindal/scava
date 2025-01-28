@@ -11,13 +11,7 @@ struct QuestionView: View {
     @State private var isCorrect = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Handle to indicate draggable sheet
-            RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.gray.opacity(0.5))
-                .frame(width: 40, height: 5)
-                .padding(.top, 10)
-            
+        VStack(spacing: 16) {  // Adjust spacing as needed
             VStack(alignment: .leading, spacing: 16) {
                 // Title and close button
                 HStack {
@@ -92,9 +86,9 @@ struct QuestionView: View {
             }
             .padding()
             .background(Color.red)
+            .cornerRadius(20)
+            .padding(.top, -100) // Move it further up on the screen
         }
-        .background(Color.red)
-        .cornerRadius(20, corners: [.topLeft, .topRight])
         .frame(maxHeight: 300)
         .transition(.move(edge: .top))
         .onAppear {
@@ -122,4 +116,24 @@ struct RoundedCorner: Shape {
         )
         return Path(path.cgPath)
     }
+}
+
+// Preview
+#Preview {
+    let landmark = Landmark(
+        name: "Test Landmark",
+        latitude: 47.3119,
+        longitude: -122.1785,
+        triggerRadius: 5,
+        question: "What is the capital of France?",
+        correctAnswer: "Paris"
+    )
+    
+    return QuestionView(
+        landmark: landmark,
+        userAnswer: .constant(""),
+        isPresented: .constant(true),
+        keyboardFocus: .constant(false),
+        onSubmit: { _ in }
+    )
 }

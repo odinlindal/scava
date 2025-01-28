@@ -108,21 +108,18 @@ class GameViewModel: ObservableObject {
             return
         }
         
-        // Find the next uncompleted landmark
-        for landmark in route.landmarks {
-            if !completedLandmarks.contains(landmark.id) {
-                let landmarkLocation = CLLocation(
-                    latitude: landmark.latitude,
-                    longitude: landmark.longitude
-                )
-                
-                let distance = location.distance(from: landmarkLocation)
-                if distance <= landmark.triggerRadius {
-                    print("📍 Within range of landmark: \(landmark.name)")
-                    currentLandmark = landmark
-                    showQuestion = true
-                    break
-                }
+        // Only check the next uncompleted landmark
+        if let nextLandmark = nextLandmark {
+            let landmarkLocation = CLLocation(
+                latitude: nextLandmark.latitude,
+                longitude: nextLandmark.longitude
+            )
+            
+            let distance = location.distance(from: landmarkLocation)
+            if distance <= nextLandmark.triggerRadius {
+                print("📍 Within range of next landmark: \(nextLandmark.name)")
+                currentLandmark = nextLandmark
+                showQuestion = true
             }
         }
     }

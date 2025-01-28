@@ -15,6 +15,7 @@ struct MapView: View {
     @State private var userAnswer = ""
     @AppStorage("selectedTab") var selectedTab: Int = 0
     @State private var showStartRouteAlert = false
+    @StateObject private var hapticManager = HapticManager.shared
     
     init(gameViewModel: GameViewModel) {
         _locationManager = StateObject(wrappedValue: LocationManager(gameViewModel: gameViewModel))
@@ -22,15 +23,13 @@ struct MapView: View {
     
     var body: some View {
         ZStack {
+            // Base Map Layer
             Map(position: $locationManager.region, interactionModes: gameViewModel.isRouteActive ? [] : .all) {
                 UserAnnotation()
                 
-                if gameViewModel.isRouteActive, let route = gameViewModel.activeRoute {
-                    // Only show the next uncompleted landmark
-                    if let nextLandmark = gameViewModel.nextLandmark {
-                        Marker(nextLandmark.name, coordinate: nextLandmark.coordinate)
-                            .tint(.red)
-                    }
+                if gameViewModel.isRouteActive, let nextLandmark = gameViewModel.nextLandmark {
+                    Marker(nextLandmark.name, coordinate: nextLandmark.coordinate)
+                        .tint(.red)
                 }
             }
             .mapStyle(.standard(elevation: .realistic))
@@ -42,36 +41,15 @@ struct MapView: View {
                 }
             }
             
-            VStack {
-                if gameViewModel.isRouteActive {
-                    // Next landmark label at top
-                    Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.red)
-                        .cornerRadius(10)
-                        .padding()
-                }
-                
-                Spacer()
-                
-                HStack {
-                    if gameViewModel.isRouteActive {
-                        Button(action: {
-                            showStartRouteAlert = true
-                        }) {
-                            Text("End Route")
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.red)
-                                .cornerRadius(10)
-                        }
-                    }
-                    
+            // Active Route UI
+            if gameViewModel.isRouteActive {
+                activeRouteOverlay
+            } else {
+                // Inactive Route UI (just the location button)
+                VStack {
                     Spacer()
-                    
-                    if !gameViewModel.isRouteActive {
+                    HStack {
+                        Spacer()
                         Button(action: {
                             locationManager.requestLocation()
                         }) {
@@ -82,16 +60,15 @@ struct MapView: View {
                                 .clipShape(Circle())
                                 .shadow(radius: 4)
                         }
+                        .padding()
                     }
                 }
-                .padding()
             }
             
+            // Question View Overlay
             if gameViewModel.showQuestion {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
-                
-                let _ = print("Showing question for: \(gameViewModel.currentLandmark?.name ?? "unknown")")
                 
                 if let landmark = gameViewModel.currentLandmark {
                     QuestionView(
@@ -140,10 +117,117 @@ struct MapView: View {
             Text("Congratulations! You've completed all landmarks on this route.")
         }
         .interactiveDismissDisabled(true)
-        .onChange(of: gameViewModel.isRouteActive) { _, isActive in
-            if !isActive {
-                showRouteDetail = false
+    }
+    
+    // Active Route UI Components
+    private var activeRouteOverlay: some View {
+        VStack {
+            // Top landmark label
+            Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding()
+                .background(Color.red)
+                .cornerRadius(10)
+                .padding()
+            
+            Spacer()
+            
+            if let nextLandmark = gameViewModel.nextLandmark,
+               let userLocation = locationManager.location {
+                let targetLocation = CLLocation(
+                    latitude: nextLandmark.latitude,
+                    longitude: nextLandmark.longitude
+                )
+                
+                let distance = userLocation.distance(from: targetLocation)
+                
+                // Arrow and bottom controls
+                VStack {
+                    let _ = hapticManager.startMonitoring(
+                        for: distance,
+                        triggerRadius: nextLandmark.triggerRadius,
+                        isQuestionShowing: gameViewModel.showQuestion
+                    )
+                    
+                    // Conditionally show the arrow based on the question state
+                    if !gameViewModel.showQuestion {
+                        DirectionalArrowView(
+                            userLocation: userLocation,
+                            targetLocation: targetLocation,
+                            gameViewModel: gameViewModel
+                        )
+                        .frame(width: 120, height: 120)
+                        .padding(.bottom, 30)
+                    }
+                    
+                    // Bottom controls
+                    if !gameViewModel.showQuestion{
+                        HStack {
+                            ZStack {
+                                Text(String(format: "%.1fm", hapticManager.currentDistance))
+                                    .font(.subheadline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 14)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                showStartRouteAlert = true
+                            }) {
+                                Text("End \nRoute")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.red)
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                    }
+                }
+                .onDisappear {
+                    hapticManager.stopPulse()
+                }
             }
         }
     }
+}
+
+#Preview {
+    MapView(gameViewModel: GameViewModel())
+        .environmentObject(GameViewModel())
+}
+
+// Optional: Add a preview with an active route
+#Preview("Active Route") {
+    let viewModel = GameViewModel()
+    viewModel.isRouteActive = true
+    viewModel.activeRoute = Route(
+        name: "Test Route",
+        description: "A test route",
+        distance: 1.0,
+        estimatedTime: 30,
+        landmarks: [
+            Landmark(
+                name: "Test Landmark",
+                latitude: 47.3119,
+                longitude: -122.1785,
+                triggerRadius: 5,
+                question: "Test Question?",
+                correctAnswer: "Test"
+            )
+        ],
+        latitude: 47.3119,
+        longitude: -122.1785
+    )
+    
+    return MapView(gameViewModel: viewModel)
+        .environmentObject(viewModel)
 }

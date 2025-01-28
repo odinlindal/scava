@@ -16,6 +16,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
     )))
     @Published var location: CLLocation?
+    @Published var heading: CLHeading?
     private var gameViewModel: GameViewModel?
     
     private var isInitialLocation = true
@@ -27,6 +28,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingHeading()
     }
     
     func startTracking() {
@@ -52,7 +54,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if gameViewModel?.isRouteActive == true {
             region = .region(MKCoordinateRegion(
                 center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)  // Closer zoom
+                span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)  // Closer zoom
             ))
         } else if isInitialLocation {
             region = .region(MKCoordinateRegion(
@@ -72,5 +74,10 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
             locationManager.startUpdatingLocation()
         }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        self.heading = newHeading
+        NotificationCenter.default.post(name: .init("CLHeadingDidChangeNotification"), object: newHeading)
     }
 }
