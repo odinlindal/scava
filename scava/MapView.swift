@@ -122,14 +122,25 @@ struct MapView: View {
     // Active Route UI Components
     private var activeRouteOverlay: some View {
         VStack {
-            // Top landmark label
-            Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.red)
-                .cornerRadius(10)
-                .padding()
+            // Top landmark label and counter
+            HStack {
+                Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .background(Color.red)
+                    .cornerRadius(10)
+                
+                if let route = gameViewModel.activeRoute {
+                    Text("\(gameViewModel.completedLandmarks.count)/\(route.landmarks.count)")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.red)
+                        .cornerRadius(10)
+                }
+            }
+            .padding()
             
             Spacer()
             
@@ -162,17 +173,16 @@ struct MapView: View {
                     }
                     
                     // Bottom controls
-                    if !gameViewModel.showQuestion{
+                    if !gameViewModel.showQuestion {
                         HStack {
-                            ZStack {
-                                Text(String(format: "%.1fm", hapticManager.currentDistance))
-                                    .font(.subheadline)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 14)
-                                    .padding(.vertical, 14)
-                                    .background(Color.red)
-                                    .cornerRadius(10)
-                            }
+                            // Distance label
+                            Text(String(format: "%.1fm", hapticManager.currentDistance))
+                                .font(.subheadline)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 14)
+                                .background(Color.red)
+                                .cornerRadius(10)
                             
                             Spacer()
                             
