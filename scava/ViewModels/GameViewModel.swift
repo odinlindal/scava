@@ -24,12 +24,25 @@ class GameViewModel: ObservableObject {
     private let firestoreService = FirestoreService()
     
     init() {
-        // Load completed landmarks from UserDefaults
         if let saved = UserDefaults.standard.array(forKey: "CompletedLandmarks") as? [String] {
-            completedLandmarks = Set(saved.compactMap { UUID(uuidString: $0) })
+            let uuids = saved.compactMap { UUID(uuidString: $0) }
+            if uuids.count == saved.count {
+                completedLandmarks = Set(uuids)
+            } else {
+                print("⚠️ Skipped loading invalid UUIDs from CompletedLandmarks")
+                completedLandmarks = []
+            }
+        } else {
+            completedLandmarks = []
         }
         
-        // Fetch routes from Firestore
+        // Try loading routes from cache
+        if let cached = loadRoutesFromCache() {
+            routes = cached
+            print("📦 Loaded \(routes.count) routes from cache")
+        }
+
+        // Then fetch latest from Firestore
         Task {
             await fetchRoutes()
         }
@@ -38,8 +51,10 @@ class GameViewModel: ObservableObject {
     @MainActor
     func fetchRoutes() async {
         do {
-            routes = try await firestoreService.fetchRoutes()
-            print("📱 Fetched \(routes.count) routes from Firestore")
+            let freshRoutes = try await firestoreService.fetchRoutes()
+            routes = freshRoutes
+            saveRoutesToCache(freshRoutes)
+            print("📱 Fetched \(routes.count) routes from Firestore and updated cache")
         } catch {
             print("❌ Error fetching routes: \(error.localizedDescription)")
         }
@@ -153,6 +168,21 @@ class GameViewModel: ObservableObject {
         return route.landmarks.first { landmark in
             !completedLandmarks.contains(landmark.id)
         }
+    }
+    
+    private func saveRoutesToCache(_ routes: [Route]) {
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(routes) {
+            UserDefaults.standard.set(data, forKey: "CachedRoutes")
+        }
+    }
+    
+    private func loadRoutesFromCache() -> [Route]? {
+        if let data = UserDefaults.standard.data(forKey: "CachedRoutes") {
+            let decoder = JSONDecoder()
+            return try? decoder.decode([Route].self, from: data)
+        }
+        return nil
     }
 }
 

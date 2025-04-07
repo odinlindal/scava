@@ -58,6 +58,10 @@ struct RoutesView: View {
             }
             .padding(.vertical)
         }
+        .refreshable {
+            await gameViewModel.fetchRoutes()
+        }
+        
         .navigationTitle("Routes")
         .background(Color.red)
         .fullScreenCover(isPresented: $showRouteDetail, onDismiss: {
