@@ -17,7 +17,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     )))
     @Published var location: CLLocation?
     @Published var heading: CLHeading?
-    private var gameViewModel: GameViewModel?
+    var gameViewModel: GameViewModel?
     
     private var isInitialLocation = true
     

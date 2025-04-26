@@ -4,15 +4,9 @@ import CoreLocation
 struct DirectionalArrowView: View {
     let userLocation: CLLocation
     let targetLocation: CLLocation
-    @StateObject private var locationManager: LocationManager
+    @EnvironmentObject var locationManager: LocationManager
     @State private var heading: Double = 0
-    
-    init(userLocation: CLLocation, targetLocation: CLLocation, gameViewModel: GameViewModel) {
-        self.userLocation = userLocation
-        self.targetLocation = targetLocation
-        _locationManager = StateObject(wrappedValue: LocationManager(gameViewModel: gameViewModel))
-    }
-    
+
     private var arrowRotation: Double {
         let bearing = calculateBearing()
         // Subtract the device heading to make it compass-like
@@ -36,13 +30,13 @@ struct DirectionalArrowView: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.white)
+                .fill(Theme.secondary)
                 .frame(width: 100, height: 100)
             
             Image(systemName: "arrow.up.circle.fill")
                 .resizable()
                 .frame(width: 120, height: 120)
-                .foregroundColor(.green)
+                .foregroundColor(Theme.primary)
                 .rotationEffect(.degrees(arrowRotation))
                 .animation(.smooth, value: arrowRotation)
         }

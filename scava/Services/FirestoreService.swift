@@ -26,9 +26,7 @@ class FirestoreService: ObservableObject {
                             correctAnswer: landmarkData["correctAnswer"] as? String ?? ""
                         )
                     } ?? [],
-                    imageURL: data["imageURL"] as? String,
-                    latitude: data["latitude"] as? Double ?? 0,
-                    longitude: data["longitude"] as? Double ?? 0
+                    imageURL: data["imageURL"] as? String
                 )
             }
         } catch {

@@ -8,10 +8,15 @@
 import SwiftUI
 
 struct ProfileView: View {
-    @State private var showLoginForm = false
-    @State private var showSignUpForm = false
+    @State private var showLoginForm: Bool
+    @State private var showSignUpForm: Bool
     @State private var email = ""
     @State private var password = ""
+    
+    init(showLoginForm: Bool = false, showSignUpForm: Bool = false) {
+        _showLoginForm = State(initialValue: showLoginForm)
+        _showSignUpForm = State(initialValue: showSignUpForm)
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -28,8 +33,8 @@ struct ProfileView: View {
                 Text("Log In")
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.white)
-                    .foregroundColor(.red)
+                    .background(Theme.textOnPrimary)
+                    .foregroundColor(Theme.primary)
                     .cornerRadius(10)
             }
             .padding(.horizontal)
@@ -38,14 +43,14 @@ struct ProfileView: View {
                 VStack(spacing: 15) {
                     TextField("Email", text: $email)
                         .textFieldStyle(.roundedBorder)
-                        .foregroundColor(.white)
-                        .background(Color.white)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .background(Theme.textOnPrimary)
                         .cornerRadius(8)
                     
                     SecureField("Password", text: $password)
                         .textFieldStyle(.roundedBorder)
-                        .foregroundColor(.white)
-                        .background(Color.white)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .background(Theme.textOnPrimary)
                         .cornerRadius(8)
                     
                     Button(action: {
@@ -54,8 +59,8 @@ struct ProfileView: View {
                         Text("Submit")
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white)
-                            .foregroundColor(.red)
+                            .background(Theme.textOnPrimary)
+                            .foregroundColor(Theme.primary)
                             .cornerRadius(10)
                     }
                 }
@@ -74,8 +79,8 @@ struct ProfileView: View {
                 Text("Sign Up")
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.white)
-                    .foregroundColor(.red)
+                    .background(Theme.textOnPrimary)
+                    .foregroundColor(Theme.primary)
                     .cornerRadius(10)
             }
             .padding(.horizontal)
@@ -84,14 +89,14 @@ struct ProfileView: View {
                 VStack(spacing: 15) {
                     TextField("Email", text: $email)
                         .textFieldStyle(.roundedBorder)
-                        .foregroundColor(.white)
-                        .background(Color.white)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .background(Theme.textOnPrimary)
                         .cornerRadius(8)
                     
                     SecureField("Password", text: $password)
                         .textFieldStyle(.roundedBorder)
-                        .foregroundColor(.white)
-                        .background(Color.white)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .background(Theme.textOnPrimary)
                         .cornerRadius(8)
                     
                     Button(action: {
@@ -100,8 +105,8 @@ struct ProfileView: View {
                         Text("Submit")
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white)
-                            .foregroundColor(.red)
+                            .background(Theme.textOnPrimary)
+                            .foregroundColor(Theme.primary)
                             .cornerRadius(10)
                     }
                 }
@@ -112,6 +117,24 @@ struct ProfileView: View {
             Spacer()
         }
         .navigationTitle("Profile")
-        .background(Color.red)
+        .background(Theme.primary)
+    }
+}
+
+#Preview("Default") {
+    NavigationView {
+        ProfileView()
+    }
+}
+
+#Preview("Login Form") {
+    NavigationView {
+        ProfileView(showLoginForm: true)
+    }
+}
+
+#Preview("Sign Up Form") {
+    NavigationView {
+        ProfileView(showSignUpForm: true)
     }
 }

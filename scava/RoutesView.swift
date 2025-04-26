@@ -7,82 +7,71 @@
 import SwiftUI
 
 struct RoutesView: View {
-    @State private var showRouteDetail = false
-    @State private var selectedRoute: Route?
+    @Binding var selectedTab: Int
+    @Binding var selectedRoute: Route?
+    @Binding var showRouteDetail: Bool
     @EnvironmentObject var gameViewModel: GameViewModel
-    
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                ForEach(gameViewModel.routes) { route in
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            if let imageURL = route.imageURL {
-                                Image(imageURL)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(height: 120)
-                                    .clipped()
-                                    .cornerRadius(8)
+        NavigationStack {
+            VStack {
+                if gameViewModel.isLoading {
+                    ScrollView {
+                        VStack {
+                            Spacer(minLength: 200)
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.primary))
+                                .scaleEffect(1.5)
+                                .padding()
+                            Spacer()
+                        }
+                    }
+                } else if gameViewModel.routes.isEmpty {
+                    VStack {
+                        Text("No routes available")
+                            .foregroundColor(Theme.textPrimary)
+                            .font(.title2)
+                        Button("Refresh") {
+                            Task {
+                                await gameViewModel.fetchRoutes()
                             }
-                            
-                            Text(route.name)
-                                .font(.title2)
-                                .foregroundColor(.white)
-                            
-                            Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
-                                .foregroundColor(.white.opacity(0.8))
-                                .font(.caption)
-                            
-                            Button(action: {
-                                print("🔍 Selected route: \(route.name)")
-                                selectedRoute = route
-                                print("📍 Selected route data: \(selectedRoute?.name ?? "none")")
-                                DispatchQueue.main.async {
-                                    showRouteDetail = true
-                                }
-                            }) {
-                                Text("View Route")
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.white)
-                                    .foregroundColor(.red)
-                                    .cornerRadius(8)
+                        }
+                        .padding()
+                        .background(Theme.primary)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .cornerRadius(10)
+                    }
+                    .padding()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 20) { // ✅ Use LazyVStack
+                            ForEach(gameViewModel.routes) { route in
+                                RouteCard(
+                                    route: route,
+                                    selectedRoute: $selectedRoute,
+                                    showRouteDetail: $showRouteDetail
+                                )
                             }
                         }
                         .padding()
                     }
-                    .groupBoxStyle(RedGroupBoxStyle())
-                    .padding(.horizontal)
+                    .refreshable {
+                        await gameViewModel.fetchRoutes()
+                    }
                 }
             }
-            .padding(.vertical)
-        }
-        .refreshable {
-            await gameViewModel.fetchRoutes()
-        }
-        
-        .navigationTitle("Routes")
-        .background(Color.red)
-        .fullScreenCover(isPresented: $showRouteDetail, onDismiss: {
-            selectedRoute = nil
-        }) {
-            if let route = selectedRoute {
-                NavigationView {
-                    RouteDetailView(route: route, gameViewModel: gameViewModel)
-                }
-            } else {
-                VStack {
-                    Button("Go Back") {
-                        showRouteDetail = false
+            .background(Theme.background.ignoresSafeArea())
+            .navigationTitle("Routes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.primary, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .onAppear {
+                if gameViewModel.routes.isEmpty {
+                    Task {
+                        await gameViewModel.fetchRoutes()
                     }
-                    .padding()
-                    .background(Color.white)
-                    .foregroundColor(.red)
-                    .cornerRadius(10)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.red)
             }
         }
     }
@@ -95,11 +84,75 @@ struct RedGroupBoxStyle: GroupBoxStyle {
             configuration.content
         }
         .padding(.top, 8)
-        .background(Color.red.opacity(0.3))
+        .background(Theme.primary.opacity(0.1))
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                .stroke(Theme.primary.opacity(0.2), lineWidth: 1)
         )
     }
 }
+
+private struct RouteCard: View {
+    let route: Route
+    @Binding var selectedRoute: Route?
+    @Binding var showRouteDetail: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let imageURL = route.imageURL {
+                Image(imageURL)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 120)
+                    .clipped()
+                    .cornerRadius(8)
+            } else {
+                Color.clear
+                    .frame(height: 120)
+            }
+
+            Text(route.name)
+                .font(.title2)
+                .foregroundColor(Theme.textPrimary)
+
+            Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
+                .foregroundColor(Theme.textSecondary)
+                .font(.caption)
+
+            Button(action: {
+                selectedRoute = route
+                showRouteDetail = true
+            }) {
+                Text("View Route")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.primary)
+                    .foregroundColor(Theme.textOnPrimary)
+                    .cornerRadius(8)
+            }
+            .contentShape(Rectangle())
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Theme.primary.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Theme.primary.opacity(0.2), lineWidth: 1)
+        )
+        .padding(.horizontal)
+    }
+}
+
+
+#Preview {
+    NavigationView {
+        RoutesView(selectedTab: .constant(0), selectedRoute: .constant(nil), showRouteDetail: .constant(false))
+            .environmentObject(GameViewModel())
+    }
+}
+

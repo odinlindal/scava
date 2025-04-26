@@ -8,18 +8,14 @@ import SwiftUI
 import MapKit
 
 struct MapView: View {
+    @Binding var selectedTab: Int
     @EnvironmentObject var gameViewModel: GameViewModel
-    @StateObject private var locationManager: LocationManager
+    @EnvironmentObject var locationManager: LocationManager
     @State private var showRoutePreview = false
     @State private var showRouteDetail = false
     @State private var userAnswer = ""
-    @AppStorage("selectedTab") var selectedTab: Int = 0
     @State private var showStartRouteAlert = false
     @StateObject private var hapticManager = HapticManager.shared
-    
-    init(gameViewModel: GameViewModel) {
-        _locationManager = StateObject(wrappedValue: LocationManager(gameViewModel: gameViewModel))
-    }
     
     var body: some View {
         ZStack {
@@ -29,7 +25,7 @@ struct MapView: View {
                 
                 if gameViewModel.isRouteActive, let nextLandmark = gameViewModel.nextLandmark {
                     Marker(nextLandmark.name, coordinate: nextLandmark.coordinate)
-                        .tint(.red)
+                        .tint(Theme.primary)
                 }
             }
             .mapStyle(.standard(elevation: .realistic))
@@ -54,9 +50,9 @@ struct MapView: View {
                             locationManager.requestLocation()
                         }) {
                             Image(systemName: "location.fill")
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.textOnPrimary)
                                 .padding()
-                                .background(Color.red)
+                                .background(Theme.primary)
                                 .clipShape(Circle())
                                 .shadow(radius: 4)
                         }
@@ -88,7 +84,7 @@ struct MapView: View {
         }
         .fullScreenCover(isPresented: $showRouteDetail) {
             if let route = gameViewModel.activeRoute {
-                RouteDetailView(route: route, gameViewModel: gameViewModel)
+                RouteDetailView(route: route, selectedTab: $selectedTab)
             }
         }
         .alert("End Route?", isPresented: $showStartRouteAlert) {
@@ -126,17 +122,17 @@ struct MapView: View {
             HStack {
                 Text("Next: \(gameViewModel.nextLandmark?.name ?? "Finding next landmark...")")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.textOnPrimary)
                     .padding()
-                    .background(Color.red)
+                    .background(Theme.primary)
                     .cornerRadius(10)
                 
                 if let route = gameViewModel.activeRoute {
                     Text("\(gameViewModel.completedLandmarks.count)/\(route.landmarks.count)")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.textOnPrimary)
                         .padding()
-                        .background(Color.red)
+                        .background(Theme.primary)
                         .cornerRadius(10)
                 }
             }
@@ -165,8 +161,7 @@ struct MapView: View {
                     if !gameViewModel.showQuestion {
                         DirectionalArrowView(
                             userLocation: userLocation,
-                            targetLocation: targetLocation,
-                            gameViewModel: gameViewModel
+                            targetLocation: targetLocation
                         )
                         .frame(width: 120, height: 120)
                         .padding(.bottom, 30)
@@ -178,23 +173,36 @@ struct MapView: View {
                             // Distance label
                             Text(String(format: "%.1fm", hapticManager.currentDistance))
                                 .font(.subheadline)
-                                .foregroundColor(.white)
+                                .foregroundColor(Theme.textOnPrimary)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 14)
-                                .background(Color.red)
+                                .background(Theme.primary)
                                 .cornerRadius(10)
                             
                             Spacer()
+                            
+                            //DEBUG
+                            /*Button(action: {
+                                gameViewModel.simulateAppRelaunch()
+                            }) {
+                                Image(systemName: "arrow.clockwise.circle.fill")
+                                    .foregroundColor(Theme.textOnPrimary)
+                                    .padding()
+                                    .background(Theme.primary)
+                                    .clipShape(Circle())
+                            }
+                            .padding()*/
+                            //END DEBUG
                             
                             Button(action: {
                                 showStartRouteAlert = true
                             }) {
                                 Text("End \nRoute")
                                     .font(.subheadline)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(Theme.textOnPrimary)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
-                                    .background(Color.red)
+                                    .background(Theme.primary)
                                     .cornerRadius(10)
                             }
                         }
@@ -211,33 +219,62 @@ struct MapView: View {
 }
 
 #Preview {
-    MapView(gameViewModel: GameViewModel())
-        .environmentObject(GameViewModel())
-}
-
-// Optional: Add a preview with an active route
-#Preview("Active Route") {
     let viewModel = GameViewModel()
     viewModel.isRouteActive = true
     viewModel.activeRoute = Route(
+        id: UUID(),
         name: "Test Route",
-        description: "A test route",
+        description: "A test route through the city",
+        difficulty: "Easy",
         distance: 1.0,
         estimatedTime: 30,
         landmarks: [
             Landmark(
+                id: UUID(),
                 name: "Test Landmark",
                 latitude: 47.3119,
                 longitude: -122.1785,
-                triggerRadius: 5,
-                question: "Test Question?",
-                correctAnswer: "Test"
+                triggerRadius: 50,
+                question: "What is the capital of France?",
+                correctAnswer: "Paris"
             )
         ],
-        latitude: 47.3119,
-        longitude: -122.1785
+        imageURL: "grcroute"
+    )
+    viewModel.currentLandmark = viewModel.activeRoute?.landmarks[0]
+    viewModel.showQuestion = true
+    
+    return MapView(selectedTab: .constant(1))
+        .environmentObject(viewModel)
+        .environmentObject(LocationManager(gameViewModel: viewModel))
+}
+
+#Preview("Active Route") {
+    let viewModel = GameViewModel()
+    viewModel.isRouteActive = true
+    viewModel.activeRoute = Route(
+        id: UUID(),
+        name: "Test Route",
+        description: "A test route through the city",
+        difficulty: "Easy",
+        distance: 1.0,
+        estimatedTime: 30,
+        landmarks: [
+            Landmark(
+                id: UUID(),
+                name: "Test Landmark",
+                latitude: 47.3119,
+                longitude: -122.1785,
+                triggerRadius: 50,
+                question: "What is the capital of France?",
+                correctAnswer: "Paris"
+            )
+        ],
+        imageURL: "grcroute"
     )
     
-    return MapView(gameViewModel: viewModel)
+    return MapView(selectedTab: .constant(1))
         .environmentObject(viewModel)
+        .environmentObject(LocationManager(gameViewModel: viewModel))
 }
+

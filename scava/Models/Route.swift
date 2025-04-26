@@ -9,11 +9,9 @@ struct Route: Identifiable, Codable {
     let estimatedTime: TimeInterval // in minutes
     let landmarks: [Landmark]
     let imageURL: String?
-    let latitude: Double  // Add these instead
-    let longitude: Double
     
     enum CodingKeys: String, CodingKey {
-        case id, name, description, difficulty, distance, estimatedTime, landmarks, imageURL, latitude, longitude
+        case id, name, description, difficulty, distance, estimatedTime, landmarks, imageURL
     }
     
     init(id: UUID = UUID(), 
@@ -23,9 +21,7 @@ struct Route: Identifiable, Codable {
          distance: Double,
          estimatedTime: TimeInterval,
          landmarks: [Landmark],
-         imageURL: String? = nil,
-         latitude: Double,  // Add these parameters
-         longitude: Double) {
+         imageURL: String? = nil) {
         self.id = id
         self.name = name
         self.description = description
@@ -34,11 +30,8 @@ struct Route: Identifiable, Codable {
         self.estimatedTime = estimatedTime
         self.landmarks = landmarks
         self.imageURL = imageURL
-        self.latitude = latitude
-        self.longitude = longitude
     }
     
-    // Add encode/decode methods for CLLocationCoordinate2D
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -49,9 +42,6 @@ struct Route: Identifiable, Codable {
         estimatedTime = try container.decode(TimeInterval.self, forKey: .estimatedTime)
         landmarks = try container.decode([Landmark].self, forKey: .landmarks)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
-        
-        latitude = try container.decode(Double.self, forKey: .latitude)
-        longitude = try container.decode(Double.self, forKey: .longitude)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -64,7 +54,5 @@ struct Route: Identifiable, Codable {
         try container.encode(estimatedTime, forKey: .estimatedTime)
         try container.encode(landmarks, forKey: .landmarks)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
-        try container.encode(latitude, forKey: .latitude)
-        try container.encode(longitude, forKey: .longitude)
     }
 } 

@@ -17,7 +17,7 @@ struct QuestionView: View {
                 HStack {
                     Text(landmark.name)
                         .font(.title2)
-                        .foregroundColor(.white)
+                        .foregroundColor(Theme.textOnPrimary)
                     
                     Spacer()
                     
@@ -25,7 +25,7 @@ struct QuestionView: View {
                         isPresented = false
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white)
+                            .foregroundColor(Theme.textOnPrimary)
                             .imageScale(.large)
                     }
                 }
@@ -33,7 +33,7 @@ struct QuestionView: View {
                 // Question
                 Text(landmark.question)
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(Theme.textOnPrimary)
                 
                 // Answer field
                 TextField("Your answer", text: $userAnswer)
@@ -49,7 +49,7 @@ struct QuestionView: View {
                         Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
                         Text(isCorrect ? "Correct!" : "Try again")
                     }
-                    .foregroundColor(isCorrect ? .green : .yellow)
+                    .foregroundColor(isCorrect ? Theme.success : Theme.warning)
                     .font(.headline)
                 }
                 
@@ -78,14 +78,14 @@ struct QuestionView: View {
                     Text(showFeedback ? (isCorrect ? "Continuing..." : "Try Again") : "Submit")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.white)
-                        .foregroundColor(.red)
+                        .background(Theme.textOnPrimary)
+                        .foregroundColor(Theme.primary)
                         .cornerRadius(10)
                 }
                 .disabled(showFeedback && isCorrect) // Disable during "Continuing..." state
             }
             .padding()
-            .background(Color.red)
+            .background(Theme.primary)
             .cornerRadius(20)
             .padding(.top, -100) // Move it further up on the screen
         }

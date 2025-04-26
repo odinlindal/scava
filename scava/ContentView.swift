@@ -10,72 +10,79 @@ import MapKit
 import CoreLocation
 
 struct ContentView: View {
-    @StateObject private var gameViewModel = GameViewModel()
-    @AppStorage("selectedTab") var selectedTab: Int = 0
+    @EnvironmentObject var gameViewModel: GameViewModel
+    @State private var selectedTab = 0
+    @State private var selectedRoute: Route?
+    @State private var showRouteDetail = false
     
     init() {
-        // Set the tab bar to be red with white icons
+        // Configure tab bar appearance
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
-        tabBarAppearance.backgroundColor = .red
-        
-        // Set unselected items to white with 60% opacity
-        tabBarAppearance.stackedLayoutAppearance.normal.iconColor = .white.withAlphaComponent(0.6)
+        tabBarAppearance.backgroundColor = UIColor(Theme.primary)
         tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.white.withAlphaComponent(0.6)]
-        
-        // Set selected items to pure white
-        tabBarAppearance.stackedLayoutAppearance.selected.iconColor = .white
         tabBarAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.white]
         
         UITabBar.appearance().standardAppearance = tabBarAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
         
-        // Set the navigation bar to be red with white text
+        // Configure navigation bar appearance
         let navBarAppearance = UINavigationBarAppearance()
         navBarAppearance.configureWithOpaqueBackground()
-        navBarAppearance.backgroundColor = .red
+        navBarAppearance.backgroundColor = UIColor(Theme.primary)
         navBarAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
         navBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
         
         UINavigationBar.appearance().standardAppearance = navBarAppearance
-        UINavigationBar.appearance().compactAppearance = navBarAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
-        UINavigationBar.appearance().tintColor = .white
+        UINavigationBar.appearance().compactAppearance = navBarAppearance
     }
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack {
-                RoutesView()
-                    .navigationBarTitleDisplayMode(.inline)
-                    .background(Color.red)
+            NavigationView {
+                RoutesView(selectedTab: $selectedTab, selectedRoute: $selectedRoute, showRouteDetail: $showRouteDetail)
+                    .sheet(isPresented: $showRouteDetail) {
+                        if let route = selectedRoute {
+                            RouteDetailView(route: route, selectedTab: $selectedTab)
+                        }
+                    }
             }
             .tabItem {
-                Label("Routes", systemImage: "map.fill")
+                Label("Routes", systemImage: "map")
             }
             .tag(0)
             
-            MapView(gameViewModel: gameViewModel)
+            MapView(selectedTab: $selectedTab)
                 .tabItem {
-                    Label("Map", systemImage: "location.fill")
+                    Label("Map", systemImage: "location")
                 }
                 .tag(1)
             
-            NavigationStack {
-                ProfileView()
-                    .navigationBarTitleDisplayMode(.inline)
-                    .background(Color.red)
-            }
-            .tabItem {
-                Label("Profile", systemImage: "person.fill")
-            }
-            .tag(2)
+            ProfileView()
+                .tabItem {
+                    Label("Profile", systemImage: "person")
+                }
+                .tag(2)
         }
-        .tint(.white)
-        .environmentObject(gameViewModel)
+        .accentColor(Theme.secondary)
+        .onAppear {
+            // optional fallback
+            if UserDefaults.standard.bool(forKey: "activeRouteInProgress") {
+                selectedTab = 1
+            }
+        }
+        .onChange(of: gameViewModel.shouldResumeToMapTab) {
+            if gameViewModel.shouldResumeToMapTab {
+                selectedTab = 1
+                gameViewModel.shouldResumeToMapTab = false
+            }
+        }
     }
 }
 
 #Preview {
     ContentView()
+        .environmentObject(GameViewModel())
+        .environmentObject(LocationManager(gameViewModel: GameViewModel()))
 }
