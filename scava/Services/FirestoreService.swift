@@ -34,4 +34,12 @@ class FirestoreService: ObservableObject {
             throw error
         }
     }
+    
+    func createRoute(_ route: Route) async throws {
+            let data = try Firestore.Encoder().encode(route)
+            try await db
+                .collection("routes")
+                .document(route.id.uuidString)
+                .setData(data)
+    }
 }

@@ -22,7 +22,7 @@ class GameViewModel: ObservableObject {
     @Published var isLoading: Bool = true
     
     private var randomizedLandmarks: [Landmark] = []
-    
+    private var locationManager: LocationManager!
     private let firestoreService = FirestoreService()
     
     private struct RouteState: Codable {
@@ -32,6 +32,9 @@ class GameViewModel: ObservableObject {
     }
     
     init() {
+        // Initialize locationManager after all other properties
+        self.locationManager = LocationManager(gameViewModel: self)
+        
         // Load completed landmarks
         if let saved = UserDefaults.standard.array(forKey: "CompletedLandmarks") as? [String] {
             let uuids = saved.compactMap { UUID(uuidString: $0) }
@@ -123,8 +126,14 @@ class GameViewModel: ObservableObject {
         UserDefaults.standard.set(true, forKey: "activeRouteInProgress")
         saveCurrentRouteState()
         
-        // Create a new route with randomized landmarks
-        randomizedLandmarks = route.landmarks.shuffled()
+        // Arrange landmarks in a logical order
+        if let currentLocation = locationManager.location {
+            sortLandmarks(route: route, currentLocation: currentLocation)
+        } else {
+            // Fallback to original order if no location available
+            randomizedLandmarks = route.landmarks
+        }
+        
         activeRoute = Route(
             id: route.id,
             name: route.name,
@@ -132,7 +141,7 @@ class GameViewModel: ObservableObject {
             difficulty: route.difficulty,
             distance: route.distance,
             estimatedTime: route.estimatedTime,
-            landmarks: randomizedLandmarks,  // Use randomized landmarks
+            landmarks: randomizedLandmarks,  // Use ordered landmarks
             imageURL: route.imageURL
         )
         
@@ -141,9 +150,70 @@ class GameViewModel: ObservableObject {
         
         print("New route active state: \(isRouteActive)")
         print("New active route: \(activeRoute?.name ?? "none")")
-        print("🎲 Landmarks randomized: \(randomizedLandmarks.map { $0.name })")
+        print("📍 Landmarks ordered for minimal backtracking: \(randomizedLandmarks.map { $0.name })")
     }
     
+    func sortLandmarks (route: Route, currentLocation: CLLocation) {
+        // First, find the two landmarks that are farthest apart
+        var maxDistance = 0.0
+        var startLandmark: Landmark?
+        var endLandmark: Landmark?
+        
+        for i in 0..<route.landmarks.count {
+            for j in (i+1)..<route.landmarks.count {
+                let location1 = CLLocation(latitude: route.landmarks[i].latitude, longitude: route.landmarks[i].longitude)
+                let location2 = CLLocation(latitude: route.landmarks[j].latitude, longitude: route.landmarks[j].longitude)
+                let distance = location1.distance(from: location2)
+                
+                if distance > maxDistance {
+                    maxDistance = distance
+                    startLandmark = route.landmarks[i]
+                    endLandmark = route.landmarks[j]
+                }
+            }
+        }
+        
+        // If we found the start and end points, arrange the landmarks
+        if let start = startLandmark, let end = endLandmark {
+            var remainingLandmarks = route.landmarks.filter { $0.id != start.id && $0.id != end.id }
+            var orderedLandmarks = [start]
+            
+            // Keep finding the next closest landmark until we've ordered all of them
+            while !remainingLandmarks.isEmpty {
+                let lastLandmark = orderedLandmarks.last!
+                let nextLandmark = remainingLandmarks.min { landmark1, landmark2 in
+                    let location1 = CLLocation(latitude: landmark1.latitude, longitude: landmark1.longitude)
+                    let location2 = CLLocation(latitude: landmark2.latitude, longitude: landmark2.longitude)
+                    let lastLocation = CLLocation(latitude: lastLandmark.latitude, longitude: lastLandmark.longitude)
+                    return lastLocation.distance(from: location1) < lastLocation.distance(from: location2)
+                }
+                
+                if let next = nextLandmark {
+                    orderedLandmarks.append(next)
+                    remainingLandmarks.removeAll { $0.id == next.id }
+                }
+            }
+            
+            // Add the end landmark
+            orderedLandmarks.append(end)
+            
+            // Determine which direction to go based on user's location
+            let startLocation = CLLocation(latitude: start.latitude, longitude: start.longitude)
+            let endLocation = CLLocation(latitude: end.latitude, longitude: end.longitude)
+            
+            let distanceToStart = currentLocation.distance(from: startLocation)
+            let distanceToEnd = currentLocation.distance(from: endLocation)
+            
+            // If user is closer to the end, reverse the order
+            if distanceToEnd < distanceToStart {
+                orderedLandmarks.reverse()
+            }
+            
+            randomizedLandmarks = orderedLandmarks
+        } else {
+            randomizedLandmarks = route.landmarks
+        }
+    }
     func stopRoute() {
         print("🛑 Stopping route")
         // Clear saved state first
@@ -319,5 +389,57 @@ class GameViewModel: ObservableObject {
         restoreAppStateIfNeeded()
         debugPrintState("After Restore")
     }
+}
+
+extension GameViewModel {
+  @MainActor
+  func createRouteAsync(
+    with drafts: [RouteSpotDraft],
+    name: String,
+    description: String,
+    difficulty: String
+  ) async throws {
+    // 1️⃣ Synchronous part: build & cache
+    let landmarks = drafts.map { draft in
+      Landmark(
+        id:        draft.id,
+        name:      draft.landmarkName,
+        latitude:  draft.coordinate.latitude,
+        longitude: draft.coordinate.longitude,
+        triggerRadius: 50,
+        question:  draft.question,
+        correctAnswer: draft.correctAnswer
+      )
+    }
+
+    // compute distance & estimatedTime exactly like finishBuildingRoute…
+    var totalMeters: CLLocationDistance = 0
+    for i in 1..<landmarks.count {
+      let p1 = landmarks[i-1], p2 = landmarks[i]
+      totalMeters +=
+        CLLocation(latitude: p1.latitude, longitude: p1.longitude)
+        .distance(from:
+          CLLocation(latitude: p2.latitude, longitude: p2.longitude)
+        )
+    }
+    let distanceMiles = totalMeters / 1_609.34
+    let estimatedTime = distanceMiles * 20
+
+    let newRoute = Route(
+      name: name,
+      description: description,
+      difficulty: difficulty,
+      distance: distanceMiles,
+      estimatedTime: estimatedTime,
+      landmarks: landmarks,
+      imageURL: nil
+    )
+
+    routes.append(newRoute)
+    saveRoutesToCache(routes)
+
+    // 2️⃣ Firestore upload – this can throw
+    try await firestoreService.createRoute(newRoute)
+  }
 }
 

@@ -10,7 +10,10 @@ import SwiftUI
 struct ProfileView: View {
     @State private var showSignOutAlert = false
     @State private var showDeleteAccountAlert = false
+    @State private var isCreatingRoute = false
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var gameViewModel: GameViewModel
+    @EnvironmentObject var locationManager: LocationManager
 
     var body: some View {
         NavigationStack {
@@ -48,6 +51,17 @@ struct ProfileView: View {
                             Text("ALPHA")
                                 .font(.subheadline)
                                 .foregroundColor(Theme.textPrimary)
+                        }
+                        if(user.devUser) {
+                            Button {
+                                isCreatingRoute = true
+                            } label: {
+                                SettingsRowView(
+                                    imageName: "arrow.right.circle.fill",
+                                    title: "Make Route",
+                                    tintColor: Theme.primary
+                                )
+                            }
                         }
                     }
                     .listRowBackground(Theme.primary.opacity(0.05))
@@ -99,19 +113,31 @@ struct ProfileView: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
+        .fullScreenCover(isPresented: $isCreatingRoute) {
+              // wrap the whole flow in a new NavigationStack
+              NavigationStack {
+                RouteMetaDataScreen(isCreatingRoute: $isCreatingRoute)
+                  .environmentObject(gameViewModel)
+                  .environmentObject(locationManager)
+              }
+            }
     }
 }
 
-/*#Preview {
+struct ProfileView_Previews: PreviewProvider {
+  static var previews: some View {
+    // 1️⃣ Prepare your mock user & view model
     let mockUser = User(
-        id: "123",
-        email: "john.doe@example.com",
-        fullname: "John Doe"
+      id: "123",
+      fullname: "John Doe",
+      email: "john.doe@example.com",
+      devUser: true
     )
     let authViewModel = AuthViewModel()
     authViewModel.currentUser = mockUser
 
-    ProfileView()
-        .environmentObject(authViewModel)
+    // 2️⃣ Return your view
+    return ProfileView()
+      .environmentObject(authViewModel)
+  }
 }
-*/
