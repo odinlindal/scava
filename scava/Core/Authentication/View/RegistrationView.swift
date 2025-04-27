@@ -8,11 +8,13 @@
 import SwiftUI
 
 struct RegistrationView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
     @State var email = ""
     @State var password = ""
     @State var fullname = ""
     @State var confirmPassword = ""
+    @State private var showAlert = false
     
     var body: some View {
         VStack() {
@@ -30,14 +32,36 @@ struct RegistrationView: View {
                 
                 InputView(text: $password, title: "Password", placeholder: "Enter password", isSecureField: true)
                 
-                InputView(text: $confirmPassword, title: "Confirm Password", placeholder: "Confirm password", isSecureField: true)
+                ZStack(alignment: .trailing) {
+                    InputView(text: $confirmPassword, title: "Confirm Password", placeholder: "Confirm password", isSecureField: true)
+                    
+                    if !password.isEmpty && !confirmPassword.isEmpty {
+                        if password == confirmPassword {
+                            Image(systemName: "checkmark")
+                                .imageScale(.large)
+                                .fontWeight(.bold)
+                                .foregroundColor(Theme.textOnPrimary)
+                        } else {
+                            Image(systemName: "xmark")
+                                .imageScale(.large)
+                                .fontWeight(.bold)
+                                .foregroundColor(Theme.textOnPrimary)
+                        }
+                    }
+                }
                 
             }
             .padding(.horizontal)
             .padding(.top, 12)
             
+            //SIGN UP BUTTON
             Button {
-                print("Sign user up..")
+                Task {
+                    await authViewModel.createUser(withEmail: email, password: password, fullname: fullname)
+                    if authViewModel.errorMessage != nil {
+                        showAlert = true
+                    }
+                }
             } label: {
                 HStack {
                     Text("Sign Up")
@@ -48,6 +72,8 @@ struct RegistrationView: View {
                 .frame(width: UIScreen.main.bounds.width - 32, height: 48)
             }
             .background(Theme.textOnPrimary)
+            .disabled(!formIsVaild)
+            .opacity(formIsVaild ? 1.0 : 0.5)
             .cornerRadius(8)
             .padding(.top, 24)
                         
@@ -66,6 +92,28 @@ struct RegistrationView: View {
             Spacer()
         }
         .background(Theme.primary)
+        .alert("Sign-Up Failed",
+                   isPresented: $showAlert,
+                   presenting: authViewModel.errorMessage) { message in
+              Button("OK", role: .cancel) {
+                // clear it out
+                authViewModel.errorMessage = nil
+              }
+            } message: { message in
+              Text(message)
+            }
+    }
+}
+
+//Check if fields are populated
+extension RegistrationView: AuthenticationFormProtocol {
+    var formIsVaild: Bool {
+        return !email.isEmpty
+        && email.contains("@")
+        && !password.isEmpty
+        && password.count > 5
+        && confirmPassword == password
+        && !fullname.isEmpty
     }
 }
 

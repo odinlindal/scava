@@ -20,6 +20,7 @@ struct scavaApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject var gameViewModel = GameViewModel()
     @StateObject private var locationManager = LocationManager(gameViewModel: GameViewModel())
+    @StateObject var authViewModel = AuthViewModel()
     @State private var isLoading = true
     
     init() {
@@ -49,6 +50,7 @@ struct scavaApp: App {
                 ContentView()
                     .environmentObject(gameViewModel)
                     .environmentObject(locationManager)
+                    .environmentObject(authViewModel)
             }
         }
     }

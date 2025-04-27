@@ -11,6 +11,7 @@ import CoreLocation
 
 struct ContentView: View {
     @EnvironmentObject var gameViewModel: GameViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var selectedTab = 0
     @State private var selectedRoute: Route?
     @State private var showRouteDetail = false
@@ -29,7 +30,7 @@ struct ContentView: View {
         // Configure navigation bar appearance
         let navBarAppearance = UINavigationBarAppearance()
         navBarAppearance.configureWithOpaqueBackground()
-        navBarAppearance.backgroundColor = UIColor(Theme.primary)
+        navBarAppearance.backgroundColor = UIColor(Theme.primaryDark)
         navBarAppearance.titleTextAttributes = [.foregroundColor: UIColor.white]
         navBarAppearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
         
@@ -59,13 +60,19 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            ProfileView()
+            Group {
+                if authViewModel.userSession != nil {
+                    ProfileView()
+                } else {
+                    LoginView()
+                }
+            }
                 .tabItem {
                     Label("Profile", systemImage: "person")
                 }
                 .tag(2)
-        }
-        .accentColor(Theme.secondary)
+            }
+            .accentColor(Theme.secondary)
         .onAppear {
             // optional fallback
             if UserDefaults.standard.bool(forKey: "activeRouteInProgress") {
