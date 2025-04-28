@@ -11,19 +11,48 @@ import CoreLocation
 struct SingleQuestionEditor: View {
     @Binding var spot: RouteSpotDraft
     @Environment(\.dismiss) private var dismiss
-
+    
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Landmark") {
-                    TextField("Name", text: $spot.landmarkName)
+            VStack (spacing: 24) {
+                Section() {
+                    InputView(
+                        text: $spot.landmarkName,
+                        title: "Name",
+                        placeholder: "Enter landmark name"
+                    )
                 }
-                Section("Quiz") {
-                    TextField("Question", text: $spot.question)
-                    TextField("Answer", text: $spot.correctAnswer)
+                Section() {
+                    InputView(
+                        text: $spot.question,
+                        title: "Question",
+                        placeholder: "Type your question"
+                    )
+                }
+                Section() {
+                    InputView(
+                        text: $spot.correctAnswer,
+                        title: "Answer",
+                        placeholder: "Correct answer"
+                    )
+                }
+                HStack {
+                    Text("Trigger Radius")
+                        Picker("Trigger Radius", selection: $spot.triggerRadius) {
+                            ForEach(0..<201) { value in  // 0–200 m
+                                Text("\(value)m").tag(value)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 120)
+                        .clipped()
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
             .navigationTitle("Configure Landmark")
+            .foregroundColor(Theme.textOnPrimary)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -37,6 +66,7 @@ struct SingleQuestionEditor: View {
                     )
                 }
             }
+            .background(Color(Theme.primary))
         }
         // Prevent swipe-to-dismiss when form is incomplete
         .interactiveDismissDisabled(

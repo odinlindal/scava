@@ -162,7 +162,8 @@ private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
                         correctAnswer: "Second Stop"
                     )
                 ],
-                imageURL: "grcroute"
+                imageURL: "grcroute",
+                makerID: "1234"
             ),
             selectedTab: .constant(0)
         )

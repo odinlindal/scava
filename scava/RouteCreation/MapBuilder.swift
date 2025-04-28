@@ -8,6 +8,7 @@ struct RouteSpotDraft: Identifiable {
     var landmarkName: String = ""
     var question: String = ""
     var correctAnswer: String = ""
+    var triggerRadius: Int = 50
 }
 
 // A basic MKMapView wrapper to support dropping landmarks onto the map
@@ -17,6 +18,8 @@ struct DraggableMapView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
+        map.showsUserLocation = true              // ← show the blue dot
+        map.userTrackingMode = .none              // ← start with no auto‐follow
         map.addInteraction(UIDropInteraction(delegate: context.coordinator))
         let lp = UILongPressGestureRecognizer(
             target: context.coordinator,
@@ -137,6 +140,19 @@ struct MapBuilder: View {
                     .background(spots.count >= 2 ? Theme.primary : Color.gray)
                     .foregroundColor(.white)
                     .cornerRadius(8)
+                    Button {
+                        // simply jump the map to the user:
+                        locationManager.requestLocation()
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Theme.primary)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding()
                 }
                 .alert("Route created!", isPresented: $showSuccessAlert) {
                     Button("OK", role: .cancel) {

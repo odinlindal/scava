@@ -1,8 +1,12 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 import CoreLocation
 
+@MainActor
 class GameViewModel: ObservableObject {
     @Published var routes: [Route] = []
+    @Published var myRoutes: [Route] = []
     @Published var activeRoute: Route?
     @Published var shouldResumeToMapTab: Bool = false
     @Published var completedLandmarks: Set<UUID> = []
@@ -75,6 +79,23 @@ class GameViewModel: ObservableObject {
         isLoading = false
     }
     
+    func fetchMyRoutes() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        isLoading = true
+        do {
+          let snapshot = try await Firestore
+            .firestore()
+            .collection("routes")
+            .whereField("makerID", isEqualTo: uid)
+            .getDocuments()
+          myRoutes = try snapshot.documents
+            .compactMap { try $0.data(as: Route.self) }
+        } catch {
+          print("❌ Failed to fetch my routes:", error)
+        }
+        isLoading = false
+      }
+    
     func restoreAppStateIfNeeded() {
         print("\n🔄 Checking for saved state...")
         
@@ -142,7 +163,8 @@ class GameViewModel: ObservableObject {
             distance: route.distance,
             estimatedTime: route.estimatedTime,
             landmarks: randomizedLandmarks,  // Use ordered landmarks
-            imageURL: route.imageURL
+            imageURL: route.imageURL,
+            makerID: route.makerID
         )
         
         isRouteActive = true
@@ -406,7 +428,7 @@ extension GameViewModel {
         name:      draft.landmarkName,
         latitude:  draft.coordinate.latitude,
         longitude: draft.coordinate.longitude,
-        triggerRadius: 50,
+        triggerRadius: Double(draft.triggerRadius),
         question:  draft.question,
         correctAnswer: draft.correctAnswer
       )
@@ -424,7 +446,7 @@ extension GameViewModel {
     }
     let distanceMiles = totalMeters / 1_609.34
     let estimatedTime = distanceMiles * 20
-
+    let creator = Auth.auth().currentUser?.uid ?? "unknown"
     let newRoute = Route(
       name: name,
       description: description,
@@ -432,7 +454,8 @@ extension GameViewModel {
       distance: distanceMiles,
       estimatedTime: estimatedTime,
       landmarks: landmarks,
-      imageURL: nil
+      imageURL: nil,
+      makerID: creator
     )
 
     routes.append(newRoute)

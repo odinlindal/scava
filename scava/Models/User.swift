@@ -12,7 +12,6 @@ struct User: Identifiable, Codable {
     let fullname: String
     let email: String
     let devUser: Bool
-    //let completedRoutes: [Route]
     
     //ADD SOME PHOTO FUNCTIONALITY HERE
     var initials: String {
@@ -26,5 +25,6 @@ struct User: Identifiable, Codable {
 }
 
 extension User {
-    static var MOCK_USER = User(id: NSUUID().uuidString, fullname: "Richard Hendricks", email: "rhendricks@piedpiper.com", devUser: true)
+    static var MOCK_USER = User(id: NSUUID().uuidString, fullname: "Richard Hendricks",
+                                email: "rhendricks@piedpiper.com", devUser: true)
 }

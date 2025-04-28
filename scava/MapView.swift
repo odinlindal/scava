@@ -219,62 +219,38 @@ struct MapView: View {
 }
 
 #Preview {
-    let viewModel = GameViewModel()
-    viewModel.isRouteActive = true
-    viewModel.activeRoute = Route(
-        id: UUID(),
-        name: "Test Route",
-        description: "A test route through the city",
-        difficulty: "Easy",
-        distance: 1.0,
-        estimatedTime: 30,
-        landmarks: [
-            Landmark(
-                id: UUID(),
-                name: "Test Landmark",
-                latitude: 47.3119,
-                longitude: -122.1785,
-                triggerRadius: 50,
-                question: "What is the capital of France?",
-                correctAnswer: "Paris"
-            )
-        ],
-        imageURL: "grcroute"
-    )
-    viewModel.currentLandmark = viewModel.activeRoute?.landmarks[0]
-    viewModel.showQuestion = true
-    
-    return MapView(selectedTab: .constant(1))
-        .environmentObject(viewModel)
-        .environmentObject(LocationManager(gameViewModel: viewModel))
-}
+    // 1) Build your view model in a closure so it's all one expression
+    let vm: GameViewModel = {
+        let m = GameViewModel()
+        m.isRouteActive = true
+        m.activeRoute = Route(
+            id: UUID(),
+            name: "Test Route",
+            description: "A test route…",
+            difficulty: "Easy",
+            distance: 1.0,
+            estimatedTime: 30,
+            landmarks: [
+                Landmark(
+                    id: UUID(),
+                    name: "Test Landmark",
+                    latitude: 47.3119,
+                    longitude: -122.1785,
+                    triggerRadius: 50,
+                    question: "What is the capital of France?",
+                    correctAnswer: "Paris"
+                )
+            ],
+            imageURL: "grcroute",
+            makerID: "1234"
+        )
+        m.currentLandmark = m.activeRoute?.landmarks[0]
+        m.showQuestion = true
+        return m
+    }()
 
-#Preview("Active Route") {
-    let viewModel = GameViewModel()
-    viewModel.isRouteActive = true
-    viewModel.activeRoute = Route(
-        id: UUID(),
-        name: "Test Route",
-        description: "A test route through the city",
-        difficulty: "Easy",
-        distance: 1.0,
-        estimatedTime: 30,
-        landmarks: [
-            Landmark(
-                id: UUID(),
-                name: "Test Landmark",
-                latitude: 47.3119,
-                longitude: -122.1785,
-                triggerRadius: 50,
-                question: "What is the capital of France?",
-                correctAnswer: "Paris"
-            )
-        ],
-        imageURL: "grcroute"
-    )
-    
-    return MapView(selectedTab: .constant(1))
-        .environmentObject(viewModel)
-        .environmentObject(LocationManager(gameViewModel: viewModel))
+    // 2) A single view expression
+    MapView(selectedTab: .constant(1))
+        .environmentObject(vm)
+        .environmentObject(LocationManager(gameViewModel: vm))
 }
-

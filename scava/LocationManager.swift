@@ -48,36 +48,41 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        self.location = location
         
-        // Always update region when tracking
-        if gameViewModel?.isRouteActive == true {
-            region = .region(MKCoordinateRegion(
-                center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)  // Closer zoom
-            ))
-        } else if isInitialLocation {
-            region = .region(MKCoordinateRegion(
-                center: location.coordinate,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-            ))
-            isInitialLocation = false
-        }
-        
-        // Check location for route
-        if let gameViewModel = gameViewModel {
-            gameViewModel.checkLocation(location)
+        Task { @MainActor in
+            self.location = location
+            // Always update region when tracking
+            if gameViewModel?.isRouteActive == true {
+                region = .region(MKCoordinateRegion(
+                    center: location.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.001, longitudeDelta: 0.001)  // Closer zoom
+                ))
+            } else if isInitialLocation {
+                region = .region(MKCoordinateRegion(
+                    center: location.coordinate,
+                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+                ))
+                isInitialLocation = false
+            }
+            
+            // Check location for route
+            if let gameViewModel = gameViewModel {
+                gameViewModel.checkLocation(location)
+            }
         }
     }
-    
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
-            locationManager.startUpdatingLocation()
+        Task { @MainActor in
+            if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+                locationManager.startUpdatingLocation()
+            }
         }
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        self.heading = newHeading
-        NotificationCenter.default.post(name: .init("CLHeadingDidChangeNotification"), object: newHeading)
+        Task { @MainActor in
+            self.heading = newHeading
+            NotificationCenter.default.post(name: .init("CLHeadingDidChangeNotification"), object: newHeading)
+        }
     }
 }

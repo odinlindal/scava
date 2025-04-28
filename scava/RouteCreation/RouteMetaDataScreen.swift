@@ -5,50 +5,90 @@ struct RouteMetaDataScreen: View {
     @EnvironmentObject private var locationManager: LocationManager
     @Environment(\.dismiss) private var dismiss
     @Binding var isCreatingRoute: Bool
+
     @State private var routeName: String = ""
     @State private var routeDescription: String = ""
     @State private var routeDifficulty: String = "Moderate"
 
     var body: some View {
         NavigationStack {
-            Form {
-                TextField("Route Name", text: $routeName)
-                TextField("Description", text: $routeDescription)
-                Picker("Difficulty", selection: $routeDifficulty) {
-                    Text("Easy").tag("Easy")
-                    Text("Moderate").tag("Moderate")
-                    Text("Hard").tag("Hard")
-                }
-                Section {
-                    NavigationLink("Next") {
-                        MapBuilder(
-                            routeName: routeName,
-                            routeDescription: routeDescription,
-                            routeDifficulty: routeDifficulty,
-                            isCreatingRoute: $isCreatingRoute
-                        )
-                        .environmentObject(gameViewModel)
-                        .environmentObject(locationManager)
+            VStack(spacing: 24) {
+                // ─────────── Inputs ───────────
+                InputView(
+                    text: $routeName,
+                    title: "Route Name",
+                    placeholder: "Enter route name"
+                )
+                InputView(
+                    text: $routeDescription,
+                    title: "Description",
+                    placeholder: "Enter description"
+                )
+                
+                // Custom picker (you can leave it as-is or wrap in its own view)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Difficulty")
+                        .foregroundColor(Theme.textOnPrimary)
+                        .fontWeight(.semibold)
+                        .font(.footnote)
+                    Picker("Difficulty", selection: $routeDifficulty) {
+                        Text("Easy").tag("Easy")
+                        Text("Moderate").tag("Moderate")
+                        Text("Hard").tag("Hard")
                     }
-                    .disabled(routeName.isEmpty || routeDescription.isEmpty)
+                    .pickerStyle(.segmented)
                 }
+
+                Spacer()
+
+                // ─────────── Next Button ───────────
+                NavigationLink {
+                    MapBuilder(
+                        routeName:        routeName,
+                        routeDescription: routeDescription,
+                        routeDifficulty:  routeDifficulty,
+                        isCreatingRoute:  $isCreatingRoute
+                    )
+                    .environmentObject(gameViewModel)
+                    .environmentObject(locationManager)
+                } label: {
+                    Text("Next")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.textOnPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(routeName.isEmpty || routeDescription.isEmpty
+                                    ? Color.gray
+                                    : Theme.primary)
+                        .cornerRadius(8)
+                }
+                .disabled(routeName.isEmpty || routeDescription.isEmpty)
             }
+            // ─────────── Styling ───────────
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+            .background(Color(Theme.primary).opacity(0.05))
             .navigationTitle("New Route")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
+                    Button {
                         isCreatingRoute = false
-                    }) {
+                    } label: {
                         Image(systemName: "chevron.left")
                             .foregroundColor(Theme.textOnPrimary)
                     }
                 }
             }
         }
+        .interactiveDismissDisabled(
+            routeName.trimmingCharacters(in: .whitespaces).isEmpty ||
+            routeDescription.trimmingCharacters(in: .whitespaces).isEmpty
+        )
     }
 }
+
 
 #Preview {
     let vm = GameViewModel()

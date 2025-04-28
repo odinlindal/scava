@@ -9,9 +9,10 @@ struct Route: Identifiable, Codable {
     let estimatedTime: TimeInterval // in minutes
     let landmarks: [Landmark]
     let imageURL: String?
+    let makerID: String
     
     enum CodingKeys: String, CodingKey {
-        case id, name, description, difficulty, distance, estimatedTime, landmarks, imageURL
+        case id, name, description, difficulty, distance, estimatedTime, landmarks, imageURL, makerID
     }
     
     init(id: UUID = UUID(), 
@@ -21,7 +22,8 @@ struct Route: Identifiable, Codable {
          distance: Double,
          estimatedTime: TimeInterval,
          landmarks: [Landmark],
-         imageURL: String? = nil) {
+         imageURL: String? = nil,
+         makerID : String) {
         self.id = id
         self.name = name
         self.description = description
@@ -30,6 +32,7 @@ struct Route: Identifiable, Codable {
         self.estimatedTime = estimatedTime
         self.landmarks = landmarks
         self.imageURL = imageURL
+        self.makerID = makerID
     }
     
     init(from decoder: Decoder) throws {
@@ -42,6 +45,7 @@ struct Route: Identifiable, Codable {
         estimatedTime = try container.decode(TimeInterval.self, forKey: .estimatedTime)
         landmarks = try container.decode([Landmark].self, forKey: .landmarks)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        makerID = try container.decode(String.self, forKey: .makerID)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -54,5 +58,6 @@ struct Route: Identifiable, Codable {
         try container.encode(estimatedTime, forKey: .estimatedTime)
         try container.encode(landmarks, forKey: .landmarks)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encode(makerID, forKey: .makerID)
     }
 } 

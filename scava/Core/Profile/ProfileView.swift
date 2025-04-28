@@ -11,6 +11,9 @@ struct ProfileView: View {
     @State private var showSignOutAlert = false
     @State private var showDeleteAccountAlert = false
     @State private var isCreatingRoute = false
+    @Binding var selectedTab: Int
+    @Binding var selectedRoute: Route?
+    @Binding var showRouteDetail: Bool
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var gameViewModel: GameViewModel
     @EnvironmentObject var locationManager: LocationManager
@@ -63,6 +66,25 @@ struct ProfileView: View {
                                 )
                             }
                         }
+                        NavigationLink {
+                            // Before the list appears, fetch them
+                            RoutesView(
+                              routesToShow: gameViewModel.myRoutes,
+                              selectedTab: $selectedTab,
+                              selectedRoute: $selectedRoute,
+                              showRouteDetail: $showRouteDetail
+                            )
+                            .environmentObject(gameViewModel)
+                            .task {
+                              await gameViewModel.fetchMyRoutes()
+                            }
+                          } label: {
+                            SettingsRowView(
+                              imageName: "list.bullet",
+                              title: "My Routes",
+                              tintColor: Theme.primary
+                            )
+                          }
                     }
                     .listRowBackground(Theme.primary.opacity(0.05))
 
@@ -126,18 +148,24 @@ struct ProfileView: View {
 
 struct ProfileView_Previews: PreviewProvider {
   static var previews: some View {
-    // 1️⃣ Prepare your mock user & view model
     let mockUser = User(
       id: "123",
       fullname: "John Doe",
       email: "john.doe@example.com",
       devUser: true
     )
-    let authViewModel = AuthViewModel()
-    authViewModel.currentUser = mockUser
+    let authVM = AuthViewModel()
+    authVM.currentUser = mockUser
+    let gameVM = GameViewModel()
+    let locMgr = LocationManager(gameViewModel: gameVM)
 
-    // 2️⃣ Return your view
-    return ProfileView()
-      .environmentObject(authViewModel)
+    return ProfileView(
+      selectedTab: .constant(0),
+      selectedRoute: .constant(nil),
+      showRouteDetail: .constant(false)
+    )
+    .environmentObject(authVM)
+    .environmentObject(gameVM)
+    .environmentObject(locMgr)
   }
 }

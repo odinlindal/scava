@@ -7,10 +7,15 @@
 import SwiftUI
 
 struct RoutesView: View {
+    let routesToShow: [Route]
     @Binding var selectedTab: Int
     @Binding var selectedRoute: Route?
     @Binding var showRouteDetail: Bool
     @EnvironmentObject var gameViewModel: GameViewModel
+    
+    private var isLoading: Bool {
+        gameViewModel.isLoading
+      }
 
     var body: some View {
         NavigationStack {
@@ -26,7 +31,7 @@ struct RoutesView: View {
                             Spacer()
                         }
                     }
-                } else if gameViewModel.routes.isEmpty {
+                } else if routesToShow.isEmpty {
                     VStack {
                         Text("No routes available")
                             .foregroundColor(Theme.textPrimary)
@@ -45,7 +50,7 @@ struct RoutesView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 20) { // ✅ Use LazyVStack
-                            ForEach(gameViewModel.routes) { route in
+                            ForEach(routesToShow) { route in
                                 RouteCard(
                                     route: route,
                                     selectedRoute: $selectedRoute,
@@ -67,7 +72,7 @@ struct RoutesView: View {
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
-                if gameViewModel.routes.isEmpty {
+                if routesToShow.isEmpty {
                     Task {
                         await gameViewModel.fetchRoutes()
                     }
@@ -147,12 +152,3 @@ private struct RouteCard: View {
         .padding(.horizontal)
     }
 }
-
-
-#Preview {
-    NavigationView {
-        RoutesView(selectedTab: .constant(0), selectedRoute: .constant(nil), showRouteDetail: .constant(false))
-            .environmentObject(GameViewModel())
-    }
-}
-
