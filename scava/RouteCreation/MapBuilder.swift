@@ -105,20 +105,50 @@ struct MapBuilder: View {
             .navigationBarBackButtonHidden(true)
             
             VStack {
-                Spacer()
+                            HStack {
+                                Button{
+                                    isCreatingRoute = false
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .background(Theme.primary)
+                                        .clipShape(Circle())
+                                        .shadow(radius: 4)
+                                }
+                                .padding(.horizontal, 20)
+                                Spacer()
+                                Button{
+                                    print("search")
+                                } label: {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .padding()
+                                        .background(Theme.primary)
+                                        .clipShape(Circle())
+                                        .shadow(radius: 4)
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                            Spacer()
                 HStack {
-                    Button(action: {
-                        isCreatingRoute = false
-                    }) {
-                        Text("Cancel")
-                            .font(.subheadline)
-                            .foregroundColor(Theme.textOnPrimary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                    Button {
+                        // simply jump the map to the user:
+                        locationManager.requestLocation()
+                    } label: {
+                        Image(systemName: "location.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
                             .background(Theme.primary)
-                            .cornerRadius(8)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
                     }
-                    Button("Done (\(spots.count))") {
+                    .padding(.horizontal, 20)
+                    Spacer()
+                    Button {
                         guard spots.count >= 2 else { return }
                         Task {
                             do {
@@ -134,25 +164,19 @@ struct MapBuilder: View {
                                 showErrorAlert = true
                             }
                         }
-                    }
-                    .disabled(spots.count < 2)
-                    .padding()
-                    .background(spots.count >= 2 ? Theme.primary : Color.gray)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                    Button {
-                        // simply jump the map to the user:
-                        locationManager.requestLocation()
                     } label: {
-                        Image(systemName: "location.fill")
+                        Image(systemName: "checkmark")
                             .font(.title2)
                             .foregroundColor(.white)
                             .padding()
-                            .background(Theme.primary)
+                            .background(spots.count >= 2 ? Color.green : Color.gray)
                             .clipShape(Circle())
                             .shadow(radius: 4)
                     }
+                    .disabled(spots.count < 2)
                     .padding()
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
                 }
                 .alert("Route created!", isPresented: $showSuccessAlert) {
                     Button("OK", role: .cancel) {
@@ -168,7 +192,10 @@ struct MapBuilder: View {
                 }
             }
             .sheet(item: $editingSpot) { spot in
-                SingleQuestionEditor(spot: binding(for: spot))
+                SingleQuestionEditor(spot: binding(for: spot),
+                                     onCancel: {
+                    spots.removeAll { $0.id == spot.id }
+                })
             }
         }
     }

@@ -12,6 +12,7 @@ struct RoutesView: View {
     @Binding var selectedRoute: Route?
     @Binding var showRouteDetail: Bool
     @EnvironmentObject var gameViewModel: GameViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     private var isLoading: Bool {
         gameViewModel.isLoading
@@ -102,6 +103,7 @@ private struct RouteCard: View {
     let route: Route
     @Binding var selectedRoute: Route?
     @Binding var showRouteDetail: Bool
+    @EnvironmentObject var authViewModel: AuthViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -125,19 +127,53 @@ private struct RouteCard: View {
                 .foregroundColor(Theme.textSecondary)
                 .font(.caption)
 
-            Button(action: {
+            if route.makerID == authViewModel.currentUser?.id {
+              HStack(spacing: 12) {
+                // 1) VIEW
+                Button {
+                  selectedRoute = route
+                  showRouteDetail = true
+                } label: {
+                  Text("View")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding()
+                .background(Theme.primary)
+                .foregroundColor(Theme.textOnPrimary)
+                .cornerRadius(8)
+                Spacer()
+                // 2) EDIT
+                Button {
+                  // ADD ACTION
+                    print("edit")
+                } label: {
+                  Text("Edit")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding()
+                .background(Theme.secondary)
+                .foregroundColor(Theme.textOnPrimary)
+                .cornerRadius(8)
+              }
+              
+            } else {
+              // fallback to just the view button
+              Button {
                 selectedRoute = route
                 showRouteDetail = true
-            }) {
+              } label: {
                 Text("View Route")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Theme.primary)
-                    .foregroundColor(Theme.textOnPrimary)
-                    .cornerRadius(8)
+                      .fontWeight(.semibold)
+                      .frame(maxWidth: .infinity)
+                      .padding()
+                      .background(Theme.primary)
+                      .foregroundColor(Theme.textOnPrimary)
+                      .cornerRadius(8)
+              }
+              .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -150,5 +186,39 @@ private struct RouteCard: View {
                 .stroke(Theme.primary.opacity(0.2), lineWidth: 1)
         )
         .padding(.horizontal)
+    }
+}
+
+struct RoutesView_Previews: PreviewProvider {
+    static var previews: some View {
+        let gameVM = GameViewModel()
+        let authVM = AuthViewModel()
+        authVM.currentUser = User(
+            id: "user123",
+            fullname: "Jane Doe",
+            email: "jane@example.com",
+            devUser: true
+        )
+        let sampleRoute = Route(
+            id: UUID(),
+            name: "Sample Route",
+            description: "A fun test route",
+            difficulty: "Easy",
+            distance: 2.5,
+            estimatedTime: 50,
+            landmarks: [],
+            imageURL: "grcroute",
+            makerID: "user123"
+        )
+        let routes = [sampleRoute]
+
+        return RoutesView(
+            routesToShow: routes,
+            selectedTab: .constant(0),
+            selectedRoute: .constant(nil),
+            showRouteDetail: .constant(false)
+        )
+        .environmentObject(gameVM)
+        .environmentObject(authVM)
     }
 }
