@@ -20,13 +20,25 @@ struct InputView: View {
                 .fontWeight(.semibold)
                 .font(.footnote)
             if isSecureField {
-                SecureField(placeholder, text: $text)
-                    .font(.system(size: 14))
-                    .foregroundColor(Theme.textOnPrimary)
+                SecureField(
+                    "", 
+                    text: $text,
+                    prompt: Text(placeholder)
+                        .foregroundColor(Theme.textOnPrimary.opacity(0.5))
+                        .font(.system(size: 14))
+                )
+                .font(.system(size: 14))
+                .foregroundColor(Theme.textOnPrimary)
             } else {
-                TextField(placeholder, text: $text)
-                    .font(.system(size: 14))
-                    .foregroundColor(Theme.textOnPrimary)
+                TextField(
+                    "", 
+                    text: $text,
+                    prompt: Text(placeholder)
+                        .foregroundColor(Theme.textOnPrimary.opacity(0.5))
+                        .font(.system(size: 14))
+                )
+                .font(.system(size: 14))
+                .foregroundColor(Theme.textOnPrimary)
             }
             Divider()
                 .background(Theme.textOnPrimary)

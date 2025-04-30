@@ -100,39 +100,46 @@ struct MapBuilder: View {
                 editingSpot = newSpot
             }
             .ignoresSafeArea()
-            .navigationTitle(routeName)
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
             
             VStack {
-                            HStack {
-                                Button{
-                                    isCreatingRoute = false
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.title2)
-                                        .foregroundColor(.white)
-                                        .padding()
-                                        .background(Theme.primary)
-                                        .clipShape(Circle())
-                                        .shadow(radius: 4)
-                                }
-                                .padding(.horizontal, 20)
-                                Spacer()
-                                Button{
-                                    print("search")
-                                } label: {
-                                    Image(systemName: "magnifyingglass")
-                                        .font(.title2)
-                                        .foregroundColor(.white)
-                                        .padding()
-                                        .background(Theme.primary)
-                                        .clipShape(Circle())
-                                        .shadow(radius: 4)
-                                }
-                                .padding(.horizontal, 20)
-                            }
-                            Spacer()
+                HStack {
+                    Button{
+                        isCreatingRoute = false
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Theme.primary)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding(.horizontal, 20)
+                    Spacer()
+                    Text("Add Landmarks")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Theme.background)
+                        .foregroundColor(Theme.primary)
+                        .cornerRadius(8)
+                        .padding(.horizontal, 10)
+                    Spacer()
+                    Button{
+                        print("search")
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Theme.primary)
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.vertical, 10)
+                Spacer()
                 HStack {
                     Button {
                         // simply jump the map to the user:
@@ -197,6 +204,7 @@ struct MapBuilder: View {
                     spots.removeAll { $0.id == spot.id }
                 })
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 

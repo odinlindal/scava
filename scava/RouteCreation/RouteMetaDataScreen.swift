@@ -13,6 +13,30 @@ struct RouteMetaDataScreen: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
+                ZStack {
+                    HStack {
+                        Button {
+                            isCreatingRoute = false
+                        } label: {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Theme.primary)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        Spacer()
+                    }
+                    Text("New Route")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Theme.textOnPrimary)
+                    Spacer()
+                }
+                
+                .padding(.top, 16)
+                .frame(maxWidth: .infinity, alignment: .center)
+                Text("")
                 // ─────────── Inputs ───────────
                 InputView(
                     text: $routeName,
@@ -59,7 +83,7 @@ struct RouteMetaDataScreen: View {
                         .padding(.vertical, 12)
                         .background(routeName.isEmpty || routeDescription.isEmpty
                                     ? Color.gray
-                                    : Theme.primary)
+                                    : Theme.success)
                         .cornerRadius(8)
                 }
                 .disabled(routeName.isEmpty || routeDescription.isEmpty)
@@ -67,25 +91,14 @@ struct RouteMetaDataScreen: View {
             // ─────────── Styling ───────────
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 16)
-            .padding(.top, 20)
-            .background(Color(Theme.primary).opacity(0.05))
-            .navigationTitle("New Route")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        isCreatingRoute = false
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(Theme.textOnPrimary)
-                    }
-                }
-            }
+            .padding(.bottom, 50)
+            .background(Color(Theme.primaryLight))
         }
         .interactiveDismissDisabled(
             routeName.trimmingCharacters(in: .whitespaces).isEmpty ||
             routeDescription.trimmingCharacters(in: .whitespaces).isEmpty
         )
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

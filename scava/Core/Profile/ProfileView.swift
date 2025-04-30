@@ -47,9 +47,9 @@ struct ProfileView: View {
                     }
                     .listRowBackground(Theme.primary.opacity(0.05))
 
-                    Section("General") {
+                    ColoredSectionListView("General") {
                         HStack {
-                            SettingsRowView(imageName: "gear", title: "Version", tintColor: Theme.primary)
+                            SettingsRowView(imageName: "gear", title: "Version")
                             Spacer()
                             Text("ALPHA")
                                 .font(.subheadline)
@@ -61,8 +61,7 @@ struct ProfileView: View {
                             } label: {
                                 SettingsRowView(
                                     imageName: "arrow.right.circle.fill",
-                                    title: "Make Route",
-                                    tintColor: Theme.primary
+                                    title: "Make Route"
                                 )
                             }
                         }
@@ -81,27 +80,24 @@ struct ProfileView: View {
                           } label: {
                             SettingsRowView(
                               imageName: "list.bullet",
-                              title: "My Routes",
-                              tintColor: Theme.primary
+                              title: "My Routes"
                             )
                           }
                     }
-                    .listRowBackground(Theme.primary.opacity(0.05))
 
-                    Section("Account") {
+                    ColoredSectionListView("Account") {
                         Button {
                             showSignOutAlert = true
                         } label: {
-                            SettingsRowView(imageName: "arrow.left.circle.fill", title: "Sign Out", tintColor: Theme.primary)
+                            SettingsRowView(imageName: "arrow.left.circle.fill", title: "Sign Out")
                         }
 
                         Button {
                             showDeleteAccountAlert = true
                         } label: {
-                            SettingsRowView(imageName: "xmark.circle.fill", title: "Delete Account", tintColor: Theme.primary)
+                            SettingsRowView(imageName: "xmark.circle.fill", title: "Delete Account")
                         }
                     }
-                    .listRowBackground(Theme.primary.opacity(0.05))
                 }
                 .scrollContentBackground(.hidden)
                 .background(Theme.background)
