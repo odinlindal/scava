@@ -464,5 +464,15 @@ extension GameViewModel {
     // 2️⃣ Firestore upload – this can throw
     try await firestoreService.createRoute(newRoute)
   }
+    
+    func createRouteAsyncObj(route: Route) async throws {
+        try await firestoreService.createRoute(route)
+    }
+    
+    @MainActor
+    func updateRouteAsync(_ route: Route) async throws {
+      try await firestoreService.updateRoute(route)
+    }
+    
 }
 

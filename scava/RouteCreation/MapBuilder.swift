@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import Firebase
 
 // Draft model representing a spot during route creation
 struct RouteSpotDraft: Identifiable {
@@ -13,13 +14,18 @@ struct RouteSpotDraft: Identifiable {
 
 // A basic MKMapView wrapper to support dropping landmarks onto the map
 struct DraggableMapView: UIViewRepresentable {
-    @Binding var spots: [RouteSpotDraft]
+    var spots: Binding<[RouteSpotDraft]>
+    let initialCameraPosition: MapCameraPosition
+    var cameraPosition: Binding<MapCameraPosition> //driven by center button
     var onLandmarkDrop: (CLLocationCoordinate2D) -> Void
-
+    
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
-        map.showsUserLocation = true              // ← show the blue dot
-        map.userTrackingMode = .none              // ← start with no auto‐follow
+        map.showsUserLocation = true
+        map.userTrackingMode = .none
+        if let region = initialCameraPosition.region {
+            map.setRegion(region, animated: false)
+        }
         map.addInteraction(UIDropInteraction(delegate: context.coordinator))
         let lp = UILongPressGestureRecognizer(
             target: context.coordinator,
@@ -29,24 +35,28 @@ struct DraggableMapView: UIViewRepresentable {
         map.addGestureRecognizer(lp)
         return map
     }
-
+    
     func updateUIView(_ uiView: MKMapView, context: Context) {
+        if let region = cameraPosition.wrappedValue.region {
+            uiView.setRegion(region, animated: true)
+        }
         uiView.removeAnnotations(uiView.annotations)
-        let annotations = spots.map { draft -> MKPointAnnotation in
+        for draft in spots.wrappedValue {
             let ann = MKPointAnnotation()
             ann.coordinate = draft.coordinate
             ann.title = draft.landmarkName.isEmpty ? "Untitled" : draft.landmarkName
-            return ann
+            uiView.addAnnotation(ann)
         }
-        uiView.addAnnotations(annotations)
     }
-
+    
     func makeCoordinator() -> Coordinator { Coordinator(self) }
-
+    
     class Coordinator: NSObject, UIDropInteractionDelegate {
         var parent: DraggableMapView
+        var lastRegion: MKCoordinateRegion?
         init(_ parent: DraggableMapView) { self.parent = parent }
-
+        
+        
         func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
             guard let mapView = interaction.view as? MKMapView else { return }
             session.loadObjects(ofClass: NSString.self) { _ in
@@ -57,11 +67,11 @@ struct DraggableMapView: UIViewRepresentable {
                 }
             }
         }
-
+        
         func dropInteraction(_ interaction: UIDropInteraction, canHandle session: UIDropSession) -> Bool {
             session.canLoadObjects(ofClass: NSString.self)
         }
-
+        
         @objc func handleLongPress(_ recognizer: UILongPressGestureRecognizer) {
             guard recognizer.state == .began,
                   let mapView = recognizer.view as? MKMapView
@@ -75,36 +85,59 @@ struct DraggableMapView: UIViewRepresentable {
     }
 }
 
+
+
 // Main builder view accepting metadata and allowing landmark placement
 struct MapBuilder: View {
-    let routeName: String
-    let routeDescription: String
-    let routeDifficulty: String
-    @Binding var isCreatingRoute: Bool
-
+    var route: Route
+    let isNew: Bool
+    let initialCameraPosition: MapCameraPosition
     @EnvironmentObject private var gameViewModel: GameViewModel
     @EnvironmentObject private var locationManager: LocationManager
     @Environment(\.dismiss) private var dismiss
-
+    
     @State private var spots: [RouteSpotDraft] = []
     @State private var editingSpot: RouteSpotDraft?
     @State private var showSuccessAlert = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
-
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    
+    init(route: Route, initialCameraPosition: MapCameraPosition, isNew: Bool = false) {
+        self.route = route
+        self.initialCameraPosition = initialCameraPosition
+        self.isNew = isNew
+        let initialSpots = route.landmarks.map { lm -> RouteSpotDraft in
+            var draft = RouteSpotDraft(
+                coordinate: .init(latitude: lm.latitude,
+                                  longitude: lm.longitude)
+            )
+            draft.landmarkName   = lm.name
+            draft.question       = lm.question
+            draft.correctAnswer  = lm.correctAnswer
+            draft.triggerRadius  = Int(lm.triggerRadius)
+            return draft
+        }
+        _spots = State(initialValue: initialSpots)
+    }
+    
     var body: some View {
         ZStack {
-            DraggableMapView(spots: $spots) { coord in
-                let newSpot = RouteSpotDraft(coordinate: coord)
+            DraggableMapView(
+                spots:                 $spots,
+                initialCameraPosition: initialCameraPosition,
+                cameraPosition:        $cameraPosition
+            ) { coordinate in
+                let newSpot = RouteSpotDraft(coordinate: coordinate)
                 spots.append(newSpot)
                 editingSpot = newSpot
             }
-            .ignoresSafeArea()
+            .ignoresSafeArea() // Ensure map fills the screen
             
             VStack {
                 HStack {
-                    Button{
-                        isCreatingRoute = false
+                    Button {
+                        dismiss()
                     } label: {
                         Image(systemName: "xmark")
                             .font(.title2)
@@ -125,7 +158,7 @@ struct MapBuilder: View {
                         .cornerRadius(8)
                         .padding(.horizontal, 10)
                     Spacer()
-                    Button{
+                    Button {
                         print("search")
                     } label: {
                         Image(systemName: "magnifyingglass")
@@ -142,8 +175,17 @@ struct MapBuilder: View {
                 Spacer()
                 HStack {
                     Button {
-                        // simply jump the map to the user:
                         locationManager.requestLocation()
+                        if let coord = locationManager.location?.coordinate {
+                            let span   = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                            let region = MKCoordinateRegion(center: coord, span: span)
+                            cameraPosition = .region(region)
+                            // no need to reset to .automatic if we only ever care about the tap
+                        }
+                        DispatchQueue.main.async {
+                            cameraPosition = .automatic
+                        }
+                        
                     } label: {
                         Image(systemName: "location.fill")
                             .font(.title2)
@@ -156,21 +198,7 @@ struct MapBuilder: View {
                     .padding(.horizontal, 20)
                     Spacer()
                     Button {
-                        guard spots.count >= 2 else { return }
-                        Task {
-                            do {
-                                try await gameViewModel.createRouteAsync(
-                                    with: spots,
-                                    name: routeName,
-                                    description: routeDescription,
-                                    difficulty: routeDifficulty
-                                )
-                                showSuccessAlert = true
-                            } catch {
-                                errorMessage = error.localizedDescription
-                                showErrorAlert = true
-                            }
-                        }
+                        handleDone()
                     } label: {
                         Image(systemName: "checkmark")
                             .font(.title2)
@@ -182,49 +210,200 @@ struct MapBuilder: View {
                     }
                     .disabled(spots.count < 2)
                     .padding()
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
                 }
-                .alert("Route created!", isPresented: $showSuccessAlert) {
+                .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
                     Button("OK", role: .cancel) {
-                        isCreatingRoute = false
+                        dismiss()
                     }
                 }
                 .alert("Failed to create route", isPresented: $showErrorAlert) {
                     Button("OK", role: .cancel) {
-                        isCreatingRoute = false
+                        dismiss()
                     }
                 } message: {
                     Text(errorMessage)
                 }
             }
             .sheet(item: $editingSpot) { spot in
-                SingleQuestionEditor(spot: binding(for: spot),
-                                     onCancel: {
+                SingleQuestionEditor(spot: binding(for: spot), onCancel: {
                     spots.removeAll { $0.id == spot.id }
                 })
             }
             .toolbar(.hidden, for: .navigationBar)
         }
     }
-
+    
     private func binding(for spot: RouteSpotDraft) -> Binding<RouteSpotDraft> {
         guard let idx = spots.firstIndex(where: { $0.id == spot.id }) else {
             fatalError("Spot not found")
         }
         return $spots[idx]
     }
+    
+    private func saveRoute() {
+        Task {
+            // map your drafts → real Landmarks
+            let landmarks = spots.map { draft in
+                Landmark(
+                    id:            draft.id,
+                    name:          draft.landmarkName,
+                    latitude:      draft.coordinate.latitude,
+                    longitude:     draft.coordinate.longitude,
+                    triggerRadius: Double(draft.triggerRadius),
+                    question:      draft.question,
+                    correctAnswer: draft.correctAnswer
+                )
+            }
+            // build a new Route
+            let newRoute = Route(
+                name:           route.name,
+                description:    route.description,
+                difficulty:     route.difficulty,
+                distance:       route.distance,
+                estimatedTime:  route.estimatedTime,
+                landmarks:      landmarks,
+                imageURL:       route.imageURL,
+                makerID:        route.makerID
+            )
+            // call your simpler API
+            do {
+                
+                try await gameViewModel.createRouteAsyncObj(route: newRoute)
+                
+                showSuccessAlert = true
+            } catch {
+                errorMessage   = error.localizedDescription
+                showErrorAlert = true
+            }
+        }
+    }
+    
+    private func handleDone() {
+        Task {
+            do {
+                // 1️⃣ build the up‑to‑date Route model from your `spots`
+                let landmarks = spots.map { draft in
+                    Landmark(
+                        id:            draft.id,
+                        name:          draft.landmarkName,
+                        latitude:      draft.coordinate.latitude,
+                        longitude:     draft.coordinate.longitude,
+                        triggerRadius: Double(draft.triggerRadius),
+                        question:      draft.question,
+                        correctAnswer: draft.correctAnswer
+                    )
+                }
+                let updatedRoute = Route(
+                    id:           route.id,
+                    name:         route.name,
+                    description:  route.description,
+                    difficulty:   route.difficulty,
+                    distance:     route.distance,
+                    estimatedTime: route.estimatedTime,
+                    landmarks:    landmarks,
+                    imageURL:     route.imageURL,
+                    makerID:      route.makerID
+                )
+                
+                if isNew {
+                    // 2️⃣ CREATE
+                    try await gameViewModel.createRouteAsyncObj(route: updatedRoute)
+                } else {
+                    // 3️⃣ UPDATE
+                    try await gameViewModel.updateRouteAsync(updatedRoute)
+                }
+                
+                showSuccessAlert = true
+            } catch {
+                errorMessage   = error.localizedDescription
+                showErrorAlert = true
+            }
+        }
+    }
 }
 
-#Preview("Map Builder") {
-    let vm = GameViewModel()
-    let loc = LocationManager(gameViewModel: vm)
-    return MapBuilder(
-        routeName: "Test Route",
-        routeDescription: "A sample route",
-        routeDifficulty: "Easy",
-        isCreatingRoute: .constant(true)
+private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
+    let lats = landmarks.map { $0.coordinate.latitude }
+    let lons = landmarks.map { $0.coordinate.longitude }
+    guard let minLat = lats.min(),
+          let maxLat = lats.max(),
+          let minLon = lons.min(),
+          let maxLon = lons.max() else {
+        // Fallback if no landmarks
+        return MKCoordinateRegion(center: .init(latitude: 0, longitude: 0),
+                                  span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01))
+    }
+    // Center is midpoint
+    let center = CLLocationCoordinate2D(
+        latitude: (minLat + maxLat) / 2,
+        longitude: (minLon + maxLon) / 2
     )
-    .environmentObject(vm)
-    .environmentObject(loc)
+    // Span covers full range + 30% padding
+    let latDelta = (maxLat - minLat) * 1.3
+    let lonDelta = (maxLon - minLon) * 1.3
+    return MKCoordinateRegion(
+        center: center,
+        span: MKCoordinateSpan(
+            latitudeDelta: max(latDelta, 0.005),
+            longitudeDelta: max(lonDelta, 0.005)
+        )
+    )
+}
+
+struct MapBuilder_Previews: PreviewProvider {
+    static var previews: some View {
+        // 1️⃣ Create a shared GameViewModel + LocationManager
+        let gameVM = GameViewModel()
+        let locMgr = LocationManager(gameViewModel: gameVM)
+        //gameVM.locationManager = locMgr  // if your VM exposes it
+        
+        // 2️⃣ Sample landmarks
+        let sampleLandmarks = [
+            Landmark(
+                id: UUID(),
+                name: "Golden Gate",
+                latitude: 37.8199,
+                longitude: -122.4783,
+                triggerRadius: 50,
+                question: "What color is the bridge?",
+                correctAnswer: "Orange"
+            ),
+            Landmark(
+                id: UUID(),
+                name: "Alcatraz",
+                latitude: 37.8270,
+                longitude: -122.4230,
+                triggerRadius: 50,
+                question: "What was Alcatraz used for?",
+                correctAnswer: "Prison"
+            )
+        ]
+        
+        // 3️⃣ A sample Route
+        let sampleRoute = Route(
+            id: UUID(),
+            name: "SF Highlights",
+            description: "A quick tour of San Francisco's icons",
+            difficulty: "Easy",
+            distance: 2.0,
+            estimatedTime: 40,
+            landmarks: sampleLandmarks,
+            imageURL: nil,
+            makerID: "preview_user"
+        )
+        
+        // 4️⃣ The MapBuilder in "creating" mode
+        MapBuilder(
+            route: sampleRoute,
+            initialCameraPosition: .region(
+                MKCoordinateRegion(
+                    center: .init(latitude: 0, longitude: 0),
+                    span: .init(latitudeDelta: 0.05, longitudeDelta: 0.05)
+                )
+            )
+        )
+        .environmentObject(gameVM)
+        .environmentObject(locMgr)
+        .previewDevice("iPhone 14")
+    }
 }

@@ -1,6 +1,6 @@
 import CoreLocation
 
-struct Landmark: Identifiable, Codable {
+struct Landmark: Identifiable, Codable, Equatable {
     let id: UUID
     let name: String
     let latitude: Double

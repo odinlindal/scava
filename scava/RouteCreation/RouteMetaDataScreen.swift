@@ -1,22 +1,23 @@
 import SwiftUI
+import MapKit
 
 struct RouteMetaDataScreen: View {
     @EnvironmentObject private var gameViewModel: GameViewModel
     @EnvironmentObject private var locationManager: LocationManager
+    @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-    @Binding var isCreatingRoute: Bool
-
+    
     @State private var routeName: String = ""
     @State private var routeDescription: String = ""
     @State private var routeDifficulty: String = "Moderate"
-
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
                 ZStack {
                     HStack {
                         Button {
-                            isCreatingRoute = false
+                            dismiss()
                         } label: {
                             Image(systemName: "xmark")
                                 .foregroundColor(.white)
@@ -62,19 +63,36 @@ struct RouteMetaDataScreen: View {
                     }
                     .pickerStyle(.segmented)
                 }
-
+                
                 Spacer()
-
+                
                 // ─────────── Next Button ───────────
                 NavigationLink {
-                    MapBuilder(
-                        routeName:        routeName,
-                        routeDescription: routeDescription,
-                        routeDifficulty:  routeDifficulty,
-                        isCreatingRoute:  $isCreatingRoute
+                    // build & hand off a complete Route
+                    let newRoute = Route(
+                        id: UUID(),
+                        name: routeName,
+                        description: routeDescription,
+                        difficulty: routeDifficulty,
+                        distance: 0,
+                        estimatedTime: 0,
+                        landmarks: [],
+                        imageURL: nil,
+                        makerID: authViewModel.currentUser?.id ?? ""
                     )
-                    .environmentObject(gameViewModel)
-                    .environmentObject(locationManager)
+                    MapBuilder(
+                        route: newRoute,
+                        initialCameraPosition: .region(
+                            MKCoordinateRegion(
+                                center: locationManager.location?.coordinate ?? .init(latitude: 0, longitude: 0),
+                                span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                            )
+                        ),
+                        isNew: true
+                    )
+                        .environmentObject(gameViewModel)
+                        .environmentObject(locationManager)
+                        .environmentObject(authViewModel)
                 } label: {
                     Text("Next")
                         .font(.subheadline)
@@ -102,11 +120,12 @@ struct RouteMetaDataScreen: View {
     }
 }
 
-
 #Preview {
-    let vm = GameViewModel()
-    let locManager = LocationManager(gameViewModel: vm)
-    return RouteMetaDataScreen(isCreatingRoute: .constant(true))
+    let vm      = GameViewModel()
+    let locMgr  = LocationManager(gameViewModel: vm)
+    let authVM  = AuthViewModel()
+    RouteMetaDataScreen()
         .environmentObject(vm)
-        .environmentObject(locManager)
+        .environmentObject(locMgr)
+        .environmentObject(authVM)
 }

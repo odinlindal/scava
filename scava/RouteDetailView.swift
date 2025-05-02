@@ -7,9 +7,10 @@ struct RouteDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var gameViewModel: GameViewModel
     @EnvironmentObject var locationManager: LocationManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showStartRouteAlert = false
     @State private var cameraPosition: MapCameraPosition = .automatic
-
+    @State private var showMapBuilder = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -20,13 +21,18 @@ struct RouteDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         
                         //REPLACE WITH ASYNC IMAGE WHEN USING URLS @ SOME POINT
-                        Image(route.imageURL ?? "grcroute")
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
+                        if let imageURL = route.imageURL {
+                            AsyncImage(url: URL(string: imageURL)) { image in
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                Color.gray
+                            }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 100)
+                            .frame(height: 200)
                             .clipped()
-                            .cornerRadius(12)
+                        }
                         
                         Text(route.name)
                             .font(.title)
@@ -44,22 +50,20 @@ struct RouteDetailView: View {
                         
                         Map(position: $cameraPosition,
                             interactionModes: []) {
-                          ForEach(route.landmarks) { landmark in
-                            Marker(landmark.name, coordinate: landmark.coordinate)
-                          }
+                            ForEach(route.landmarks) { landmark in
+                                Marker(landmark.name, coordinate: landmark.coordinate)
+                            }
                         }
-                        .frame(height: 220)
-                        .cornerRadius(12)
-                        .padding(.top, 8)
-                        .onAppear {
-                          // compute bounding region and wrap it as a MapCameraPosition
-                          let region = boundingRegion(for: route.landmarks)
-                          cameraPosition = .region(region)
-                        }
+                            .frame(height: 220)
+                            .cornerRadius(12)
+                            .padding(.top, 8)
+                            .onAppear {
+                                // compute bounding region and wrap it as a MapCameraPosition
+                                let region = boundingRegion(for: route.landmarks)
+                                cameraPosition = .region(region)
+                            }
                     }
                     .padding(.horizontal)
-                    
-                    //Spacer(minLength: 20)
                     
                     Button(action: {
                         showStartRouteAlert = true
@@ -68,11 +72,24 @@ struct RouteDetailView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Theme.textOnPrimary)
-                            .foregroundColor(Theme.textPrimary)
+                            .foregroundColor(Theme.primary)
                             .cornerRadius(10)
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 30)
+                    if (authViewModel.currentUser?.id == route.makerID) {
+                        Button {
+                            showMapBuilder = true
+                        } label: {
+                            Text("Edit Route")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                        }
+                        .padding(.horizontal)
+                    }
                 }
                 .padding(.vertical)
             }
@@ -100,6 +117,9 @@ struct RouteDetailView: View {
             }
         } message: {
             Text("Are you ready to begin this route?")
+        }
+        .fullScreenCover(isPresented: $showMapBuilder) {
+            MapBuilder(route: route, initialCameraPosition: cameraPosition, isNew: false)
         }
     }
 }
@@ -163,11 +183,12 @@ private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
                     )
                 ],
                 imageURL: "grcroute",
-                makerID: "1234"
+                makerID: ""
             ),
             selectedTab: .constant(0)
         )
         .environmentObject(GameViewModel())
         .environmentObject(LocationManager(gameViewModel: GameViewModel()))
+        .environmentObject(AuthViewModel())
     }
 }

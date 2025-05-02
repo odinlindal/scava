@@ -9,7 +9,8 @@ struct ContentView: View {
     @State private var selectedTab = 0
     @State private var selectedRoute: Route?
     @State private var showRouteDetail = false
-
+    @State private var isCreatingRoute = false
+    
     init() {
         // Configure tab bar appearance
         let tabBarAppearance = UITabBarAppearance()

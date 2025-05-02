@@ -134,7 +134,7 @@ struct ProfileView: View {
         .fullScreenCover(isPresented: $isCreatingRoute) {
               // wrap the whole flow in a new NavigationStack
               NavigationStack {
-                RouteMetaDataScreen(isCreatingRoute: $isCreatingRoute)
+                RouteMetaDataScreen()
                   .environmentObject(gameViewModel)
                   .environmentObject(locationManager)
               }

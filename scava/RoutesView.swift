@@ -127,44 +127,11 @@ private struct RouteCard: View {
                 .foregroundColor(Theme.textSecondary)
                 .font(.caption)
 
-            if route.makerID == authViewModel.currentUser?.id {
-              HStack(spacing: 12) {
-                // 1) VIEW
-                Button {
-                  selectedRoute = route
-                  showRouteDetail = true
-                } label: {
-                  Text("View")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding()
-                .background(Theme.primary)
-                .foregroundColor(Theme.textOnPrimary)
-                .cornerRadius(8)
-                Spacer()
-                // 2) EDIT
-                Button {
-                  // ADD ACTION
-                    print("edit")
-                } label: {
-                  Text("Edit")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                }
-                .padding()
-                .background(Theme.secondary)
-                .foregroundColor(Theme.textOnPrimary)
-                .cornerRadius(8)
-              }
-              
-            } else {
-              // fallback to just the view button
               Button {
                 selectedRoute = route
                 showRouteDetail = true
               } label: {
-                Text("View Route")
+                  Text(authViewModel.currentUser?.id == route.makerID ? "View/Edit Route" : "View Route")
                       .fontWeight(.semibold)
                       .frame(maxWidth: .infinity)
                       .padding()
@@ -173,7 +140,6 @@ private struct RouteCard: View {
                       .cornerRadius(8)
               }
               .contentShape(Rectangle())
-            }
         }
         .frame(maxWidth: .infinity)
         .padding()

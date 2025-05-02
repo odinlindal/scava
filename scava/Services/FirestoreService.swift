@@ -37,18 +37,18 @@ class FirestoreService: ObservableObject {
     }
     
     func createRoute(_ route: Route) async throws {
-            let data = try Firestore.Encoder().encode(route)
-            try await db
-                .collection("routes")
-                .document(route.id.uuidString)
-                .setData(data)
-    }
+        let data = try Firestore.Encoder().encode(route)
+        try await db
+          .collection("routes")
+          .document(route.id.uuidString)
+          .setData(data)
+      }
     
     func updateRoute(_ route: Route) async throws {
         let data = try Firestore.Encoder().encode(route)
         try await db
           .collection("routes")
           .document(route.id.uuidString)
-          .updateData(data)
+          .setData(data, merge: true)
       }
 }
