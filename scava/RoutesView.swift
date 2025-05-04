@@ -20,62 +20,65 @@ struct RoutesView: View {
 
     var body: some View {
         NavigationStack {
-            VStack {
-                if gameViewModel.isLoading {
-                    ScrollView {
+            ZStack {
+                Theme.background.ignoresSafeArea()
+                VStack {
+                    if gameViewModel.isLoading {
+                        ScrollView {
+                            VStack {
+                                Spacer(minLength: 200)
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.primary))
+                                    .scaleEffect(1.5)
+                                    .padding()
+                                Spacer()
+                            }
+                        }
+                    } else if routesToShow.isEmpty {
                         VStack {
-                            Spacer(minLength: 200)
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: Theme.primary))
-                                .scaleEffect(1.5)
-                                .padding()
-                            Spacer()
-                        }
-                    }
-                } else if routesToShow.isEmpty {
-                    VStack {
-                        Text("No routes available")
-                            .foregroundColor(Theme.textPrimary)
-                            .font(.title2)
-                        Button("Refresh") {
-                            Task {
-                                await gameViewModel.fetchRoutes()
+                            Text("No routes available")
+                                .foregroundColor(Theme.textPrimary)
+                                .font(.title2)
+                            Button("Refresh") {
+                                Task {
+                                    await gameViewModel.fetchRoutes()
+                                }
                             }
+                            .padding()
+                            .background(Theme.primary)
+                            .foregroundColor(Theme.textOnPrimary)
+                            .cornerRadius(10)
                         }
                         .padding()
-                        .background(Theme.primary)
-                        .foregroundColor(Theme.textOnPrimary)
-                        .cornerRadius(10)
-                    }
-                    .padding()
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 20) { // ✅ Use LazyVStack
-                            ForEach(routesToShow) { route in
-                                RouteCard(
-                                    route: route,
-                                    selectedRoute: $selectedRoute,
-                                    showRouteDetail: $showRouteDetail
-                                )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 20) {
+                                ForEach(routesToShow) { route in
+                                    RouteCard(
+                                        route: route,
+                                        selectedRoute: $selectedRoute,
+                                        showRouteDetail: $showRouteDetail
+                                    )
+                                }
                             }
+                            .padding()
                         }
-                        .padding()
-                    }
-                    .refreshable {
-                        await gameViewModel.fetchRoutes()
+                        .refreshable {
+                            await gameViewModel.fetchRoutes()
+                        }
                     }
                 }
-            }
-            .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("Routes")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Theme.primary, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .onAppear {
-                if routesToShow.isEmpty {
-                    Task {
-                        await gameViewModel.fetchRoutes()
+                .background(Theme.background.ignoresSafeArea())
+                .navigationTitle("Routes")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(Theme.primary, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .onAppear {
+                    if routesToShow.isEmpty {
+                        Task {
+                            await gameViewModel.fetchRoutes()
+                        }
                     }
                 }
             }

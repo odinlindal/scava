@@ -58,7 +58,7 @@ class GameViewModel: ObservableObject {
             print("📦 Loaded \(routes.count) routes from cache")
             isLoading = false
         }
-
+        
         // Then fetch latest from Firestore
         Task {
             await fetchRoutes()
@@ -83,18 +83,18 @@ class GameViewModel: ObservableObject {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         isLoading = true
         do {
-          let snapshot = try await Firestore
-            .firestore()
-            .collection("routes")
-            .whereField("makerID", isEqualTo: uid)
-            .getDocuments()
-          myRoutes = try snapshot.documents
-            .compactMap { try $0.data(as: Route.self) }
+            let snapshot = try await Firestore
+                .firestore()
+                .collection("routes")
+                .whereField("makerID", isEqualTo: uid)
+                .getDocuments()
+            myRoutes = try snapshot.documents
+                .compactMap { try $0.data(as: Route.self) }
         } catch {
-          print("❌ Failed to fetch my routes:", error)
+            print("❌ Failed to fetch my routes:", error)
         }
         isLoading = false
-      }
+    }
     
     func restoreAppStateIfNeeded() {
         print("\n🔄 Checking for saved state...")
@@ -254,9 +254,9 @@ class GameViewModel: ObservableObject {
     }
     
     func checkLocation(_ location: CLLocation) {
-        guard isRouteActive, let route = activeRoute else { 
+        guard isRouteActive, let route = activeRoute else {
             print("🚫 No active route - Active: \(isRouteActive), Route: \(activeRoute?.name ?? "none")")
-            return 
+            return
         }
         
         // Don't check again if we're already showing a question
@@ -375,7 +375,7 @@ class GameViewModel: ObservableObject {
             print("❌ Failed to encode state: \(error)")
         }
     }
-
+    
     private func loadCurrentRouteState() {
         if UserDefaults.standard.bool(forKey: "activeRouteInProgress"),
            let data = UserDefaults.standard.data(forKey: "ActiveRoute") {
@@ -411,68 +411,89 @@ class GameViewModel: ObservableObject {
         restoreAppStateIfNeeded()
         debugPrintState("After Restore")
     }
-}
-
-extension GameViewModel {
-  @MainActor
-  func createRouteAsync(
-    with drafts: [RouteSpotDraft],
-    name: String,
-    description: String,
-    difficulty: String
-  ) async throws {
-    // 1️⃣ Synchronous part: build & cache
-    let landmarks = drafts.map { draft in
-      Landmark(
-        id:        draft.id,
-        name:      draft.landmarkName,
-        latitude:  draft.coordinate.latitude,
-        longitude: draft.coordinate.longitude,
-        triggerRadius: Double(draft.triggerRadius),
-        question:  draft.question,
-        correctAnswer: draft.correctAnswer
-      )
+    
+    func deleteRouteAsync(_ route: Route) async throws {
+        try await firestoreService.deleteRoute(route)
+        await fetchMyRoutes()
     }
+    
+    private func buildRoute(
+        from base: Route,
+        with drafts: [RouteSpotDraft]
+      ) -> Route {
+        // turn drafts into landmarks
+        let landmarks = drafts.map { d in
+          Landmark(
+            id:            d.id,
+            name:          d.landmarkName,
+            latitude:      d.coordinate.latitude,
+            longitude:     d.coordinate.longitude,
+            triggerRadius: Double(d.triggerRadius),
+            question:      d.question,
+            correctAnswer: d.correctAnswer
+          )
+        }
 
-    // compute distance & estimatedTime exactly like finishBuildingRoute…
-    var totalMeters: CLLocationDistance = 0
-    for i in 1..<landmarks.count {
-      let p1 = landmarks[i-1], p2 = landmarks[i]
-      totalMeters +=
-        CLLocation(latitude: p1.latitude, longitude: p1.longitude)
-        .distance(from:
-          CLLocation(latitude: p2.latitude, longitude: p2.longitude)
+        // compute total meters
+        var totalMeters: CLLocationDistance = 0
+        for i in 1..<landmarks.count {
+          let p1 = landmarks[i-1], p2 = landmarks[i]
+          totalMeters += CLLocation(
+            latitude: p1.latitude,
+            longitude: p1.longitude
+          ).distance(from:
+            CLLocation(latitude: p2.latitude, longitude: p2.longitude)
+          )
+        }
+
+        let distanceMiles = totalMeters / 1_609.34
+        let estimatedTime = distanceMiles * 20
+
+        // build a brand‑new Route preserving the base’s id, name, etc.
+        return Route(
+          id:            base.id,
+          name:          base.name,
+          description:   base.description,
+          difficulty:    base.difficulty,
+          distance:      distanceMiles,
+          estimatedTime: estimatedTime,
+          landmarks:     landmarks,
+          imageURL:      base.imageURL,
+          makerID:       base.makerID
         )
-    }
-    let distanceMiles = totalMeters / 1_609.34
-    let estimatedTime = distanceMiles * 20
-    let creator = Auth.auth().currentUser?.uid ?? "unknown"
-    let newRoute = Route(
-      name: name,
-      description: description,
-      difficulty: difficulty,
-      distance: distanceMiles,
-      estimatedTime: estimatedTime,
-      landmarks: landmarks,
-      imageURL: nil,
-      makerID: creator
-    )
+      }
 
-    routes.append(newRoute)
-    saveRoutesToCache(routes)
+      // 2️⃣ Create a brand new route
+      func createRoute(
+        base: Route,
+        with drafts: [RouteSpotDraft]
+      ) async throws {
+        let newRoute = buildRoute(from: base, with: drafts)
 
-    // 2️⃣ Firestore upload – this can throw
-    try await firestoreService.createRoute(newRoute)
-  }
-    
-    func createRouteAsyncObj(route: Route) async throws {
-        try await firestoreService.createRoute(route)
-    }
-    
-    @MainActor
-    func updateRouteAsync(_ route: Route) async throws {
-      try await firestoreService.updateRoute(route)
-    }
+        // cache locally
+        routes.append(newRoute)
+        saveRoutesToCache(routes)
+
+        // upload
+        try await firestoreService.createRoute(newRoute)
+      }
+
+      // 3️⃣ Update an existing route
+      func updateRoute(
+        base: Route,
+        with drafts: [RouteSpotDraft]
+      ) async throws {
+        let updated = buildRoute(from: base, with: drafts)
+
+        // update remote
+        try await firestoreService.updateRoute(updated)
+
+        // keep your local array in sync
+        if let idx = routes.firstIndex(where: { $0.id == updated.id }) {
+          routes[idx] = updated
+          saveRoutesToCache(routes)
+        }
+      }
     
 }
 

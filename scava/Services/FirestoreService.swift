@@ -51,4 +51,16 @@ class FirestoreService: ObservableObject {
           .document(route.id.uuidString)
           .setData(data, merge: true)
       }
+    
+    func deleteRoute(_ route: Route) async throws {
+        do {
+          try await db
+            .collection("routes")
+            .document(route.id.uuidString)
+            .delete()
+        } catch {
+          print("❌ Error deleting route: \(error.localizedDescription)")
+          throw error
+        }
+      }
 }

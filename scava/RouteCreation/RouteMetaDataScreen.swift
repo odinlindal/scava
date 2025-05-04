@@ -10,6 +10,7 @@ struct RouteMetaDataScreen: View {
     @State private var routeName: String = ""
     @State private var routeDescription: String = ""
     @State private var routeDifficulty: String = "Moderate"
+    @State private var isShowingMapBuilder = false
     
     var body: some View {
         NavigationStack {
@@ -67,32 +68,8 @@ struct RouteMetaDataScreen: View {
                 Spacer()
                 
                 // ─────────── Next Button ───────────
-                NavigationLink {
-                    // build & hand off a complete Route
-                    let newRoute = Route(
-                        id: UUID(),
-                        name: routeName,
-                        description: routeDescription,
-                        difficulty: routeDifficulty,
-                        distance: 0,
-                        estimatedTime: 0,
-                        landmarks: [],
-                        imageURL: nil,
-                        makerID: authViewModel.currentUser?.id ?? ""
-                    )
-                    MapBuilder(
-                        route: newRoute,
-                        initialCameraPosition: .region(
-                            MKCoordinateRegion(
-                                center: locationManager.location?.coordinate ?? .init(latitude: 0, longitude: 0),
-                                span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            )
-                        ),
-                        isNew: true
-                    )
-                        .environmentObject(gameViewModel)
-                        .environmentObject(locationManager)
-                        .environmentObject(authViewModel)
+                Button {
+                    isShowingMapBuilder = true
                 } label: {
                     Text("Next")
                         .font(.subheadline)
@@ -112,11 +89,37 @@ struct RouteMetaDataScreen: View {
             .padding(.bottom, 50)
             .background(Color(Theme.primaryLight))
         }
-        .interactiveDismissDisabled(
-            routeName.trimmingCharacters(in: .whitespaces).isEmpty ||
-            routeDescription.trimmingCharacters(in: .whitespaces).isEmpty
-        )
         .toolbar(.hidden, for: .navigationBar)
+        .fullScreenCover(isPresented: $isShowingMapBuilder,
+                         onDismiss: {
+            // once MapBuilder goes away, also pop this screen
+            dismiss()
+        }) {
+            let newRoute = Route(
+                id: UUID(),
+                name: routeName,
+                description: routeDescription,
+                difficulty: routeDifficulty,
+                distance: 0,
+                estimatedTime: 0,
+                landmarks: [],
+                imageURL: nil,
+                makerID: authViewModel.currentUser?.id ?? ""
+            )
+            MapBuilder(
+                route: newRoute,
+                initialCameraPosition: .region(
+                    MKCoordinateRegion(
+                        center: locationManager.location?.coordinate ?? .init(latitude: 0, longitude: 0),
+                        span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    )
+                ),
+                isNew: true
+            )
+            .environmentObject(gameViewModel)
+            .environmentObject(locationManager)
+            .environmentObject(authViewModel)
+        }
     }
 }
 

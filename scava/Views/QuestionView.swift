@@ -11,7 +11,7 @@ struct QuestionView: View {
     @State private var isCorrect = false
     
     var body: some View {
-        VStack(spacing: 16) {  // Adjust spacing as needed
+        VStack(spacing: 56) {  // Adjust spacing as needed
             VStack(alignment: .leading, spacing: 16) {
                 // Title and close button
                 HStack {
@@ -20,16 +20,14 @@ struct QuestionView: View {
                         .foregroundColor(Theme.textOnPrimary)
                     
                     Spacer()
-                    
-                    Button(action: {
+                    /*Button(action: {
                         isPresented = false
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(Theme.textOnPrimary)
                             .imageScale(.large)
-                    }
+                    }*/
                 }
-                
                 // Question
                 Text(landmark.question)
                     .font(.headline)
@@ -83,6 +81,7 @@ struct QuestionView: View {
                         .cornerRadius(10)
                 }
                 .disabled(showFeedback && isCorrect) // Disable during "Continuing..." state
+                Spacer()
             }
             .padding()
             .background(Theme.primary)

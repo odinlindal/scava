@@ -25,6 +25,8 @@ struct scavaApp: App {
     
     init() {
         FirebaseApp.configure()
+        UIRefreshControl.appearance().backgroundColor = UIColor(Theme.background)
+        UIRefreshControl.appearance().tintColor      = UIColor(Theme.primary)
     }
     
     var body: some Scene {

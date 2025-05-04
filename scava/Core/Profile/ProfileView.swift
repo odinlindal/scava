@@ -131,13 +131,10 @@ struct ProfileView: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
-        .fullScreenCover(isPresented: $isCreatingRoute) {
-              // wrap the whole flow in a new NavigationStack
-              NavigationStack {
+        .sheet(isPresented: $isCreatingRoute) {
                 RouteMetaDataScreen()
-                  .environmentObject(gameViewModel)
-                  .environmentObject(locationManager)
-              }
+                .environmentObject(gameViewModel)
+                .environmentObject(locationManager)
             }
     }
 }

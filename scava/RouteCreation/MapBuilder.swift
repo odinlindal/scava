@@ -237,18 +237,6 @@ struct MapBuilder: View {
                         .disabled(spots.count < 2)
                         .padding()
                     }
-                    .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
-                        Button("OK", role: .cancel) {
-                            dismiss()
-                        }
-                    }
-                    .alert("Failed to create route", isPresented: $showErrorAlert) {
-                        Button("OK", role: .cancel) {
-                            dismiss()
-                        }
-                    } message: {
-                        Text(errorMessage)
-                    }
                 }
             }
             .sheet(item: $editingSpot) { spot in
@@ -258,17 +246,6 @@ struct MapBuilder: View {
                     onCancel: { spots.removeAll { $0.id == spot.id } }
                 )
             }
-            /*NavigationLink(
-              destination: SingleQuestionEditor(
-                spot: binding(for: editingSpot),
-                isExisting: isExisting,
-                onCancel: { spots.removeAll { $0.id == spot.id } }
-              ),
-              tag: someID,
-              selection: $editingID
-            ) {
-              EmptyView()
-            }*/
             .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
                 Button("OK", role: .cancel) { dismiss() }
             }
@@ -277,6 +254,7 @@ struct MapBuilder: View {
             } message: {
                 Text(errorMessage)
             }
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
     
@@ -287,79 +265,20 @@ struct MapBuilder: View {
         return $spots[idx]
     }
     
-    private func saveRoute() {
-        Task {
-            // map your drafts → real Landmarks
-            let landmarks = spots.map { draft in
-                Landmark(
-                    id:            draft.id,
-                    name:          draft.landmarkName,
-                    latitude:      draft.coordinate.latitude,
-                    longitude:     draft.coordinate.longitude,
-                    triggerRadius: Double(draft.triggerRadius),
-                    question:      draft.question,
-                    correctAnswer: draft.correctAnswer
-                )
-            }
-            // build a new Route
-            let newRoute = Route(
-                name:           route.name,
-                description:    route.description,
-                difficulty:     route.difficulty,
-                distance:       route.distance,
-                estimatedTime:  route.estimatedTime,
-                landmarks:      landmarks,
-                imageURL:       route.imageURL,
-                makerID:        route.makerID
-            )
-            // call your simpler API
-            do {
-                
-                try await gameViewModel.createRouteAsyncObj(route: newRoute)
-                
-                showSuccessAlert = true
-            } catch {
-                errorMessage   = error.localizedDescription
-                showErrorAlert = true
-            }
-        }
-    }
-    
     private func handleDone() {
         Task {
             do {
-                // 1️⃣ build the up‑to‑date Route model from your `spots`
-                let landmarks = spots.map { draft in
-                    Landmark(
-                        id:            draft.id,
-                        name:          draft.landmarkName,
-                        latitude:      draft.coordinate.latitude,
-                        longitude:     draft.coordinate.longitude,
-                        triggerRadius: Double(draft.triggerRadius),
-                        question:      draft.question,
-                        correctAnswer: draft.correctAnswer
+                if isNew {
+                    try await gameViewModel.createRoute(
+                        base:   route,
+                        with:   spots
+                    )
+                } else {
+                    try await gameViewModel.updateRoute(
+                        base:   route,
+                        with:   spots
                     )
                 }
-                let updatedRoute = Route(
-                    id:           route.id,
-                    name:         route.name,
-                    description:  route.description,
-                    difficulty:   route.difficulty,
-                    distance:     route.distance,
-                    estimatedTime: route.estimatedTime,
-                    landmarks:    landmarks,
-                    imageURL:     route.imageURL,
-                    makerID:      route.makerID
-                )
-                
-                if isNew {
-                    // 2️⃣ CREATE
-                    try await gameViewModel.createRouteAsyncObj(route: updatedRoute)
-                } else {
-                    // 3️⃣ UPDATE
-                    try await gameViewModel.updateRouteAsync(updatedRoute)
-                }
-                
                 showSuccessAlert = true
             } catch {
                 errorMessage   = error.localizedDescription

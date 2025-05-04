@@ -11,6 +11,9 @@ struct RouteDetailView: View {
     @State private var showStartRouteAlert = false
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var showMapBuilder = false
+    @State private var showErrorAlert = false
+    @State private var deleteAlert = false
+    @State private var errorMessage = ""
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -21,7 +24,7 @@ struct RouteDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         
                         //REPLACE WITH ASYNC IMAGE WHEN USING URLS @ SOME POINT
-                        if let imageURL = route.imageURL {
+                        /*if let imageURL = route.imageURL {
                             AsyncImage(url: URL(string: imageURL)) { image in
                                 image
                                     .resizable()
@@ -30,9 +33,16 @@ struct RouteDetailView: View {
                                 Color.gray
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 200)
+                            .frame(height: 160)
                             .clipped()
-                        }
+                        }*/
+                        
+                        Image("grcroute")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 140)
+                            .clipped()
+                            .cornerRadius(8)
                         
                         Text(route.name)
                             .font(.title)
@@ -54,7 +64,7 @@ struct RouteDetailView: View {
                                 Marker(landmark.name, coordinate: landmark.coordinate)
                             }
                         }
-                            .frame(height: 220)
+                            .frame(height: 180)
                             .cornerRadius(12)
                             .padding(.top, 8)
                             .onAppear {
@@ -85,10 +95,23 @@ struct RouteDetailView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.blue)
+                                .background(Theme.secondary)
                                 .cornerRadius(10)
                         }
                         .padding(.horizontal)
+                        Button {
+                            deleteAlert = true
+                        } label: {
+                            Text("Delete Route")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Theme.error.opacity(0.5))
+                                .cornerRadius(10)
+                        }
+                        .padding(.horizontal)
+                        
                     }
                 }
                 .padding(.vertical)
@@ -118,8 +141,33 @@ struct RouteDetailView: View {
         } message: {
             Text("Are you ready to begin this route?")
         }
+        .alert("Failed to delete route", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("Delete Route", isPresented: $deleteAlert) {
+            Button("Yes") {
+                handleDelete()
+                dismiss()
+            }
+            Button("No", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to delete this route?")
+        }
         .fullScreenCover(isPresented: $showMapBuilder) {
             MapBuilder(route: route, initialCameraPosition: cameraPosition, isNew: false)
+        }
+    }
+    private func handleDelete() {
+        Task {
+            do {
+                try await gameViewModel.deleteRouteAsync(route)
+                await gameViewModel.fetchRoutes()
+            } catch {
+                errorMessage   = error.localizedDescription
+                showErrorAlert = true
+            }
         }
     }
 }
