@@ -10,14 +10,37 @@ import CoreLocation
 
 struct SingleQuestionEditor: View {
     @Binding var spot: RouteSpotDraft
+    let isExisting: Bool
     var onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
     
+    @State private var deleteAlert: Bool
+    @State private var draftName: String
+    @State private var draftQuestion: String
+    @State private var draftAnswer: String
+    @State private var draftRadius: Int
+    
+    init(spot: Binding<RouteSpotDraft>,
+         isExisting: Bool,
+         onCancel: @escaping () -> Void)
+    {
+        self._spot = spot
+        self.isExisting = isExisting
+        self.onCancel = onCancel
+        self.deleteAlert = false
+        // now self.spot is available, so we can pull out its values
+        let current = spot.wrappedValue
+        _draftName     = State(initialValue: current.landmarkName)
+        _draftQuestion = State(initialValue: current.question)
+        _draftAnswer   = State(initialValue: current.correctAnswer)
+        _draftRadius   = State(initialValue: current.triggerRadius)
+    }
+    
     // MARK: - Completion check
     private var isComplete: Bool {
-        !spot.landmarkName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !spot.question.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !spot.correctAnswer.trimmingCharacters(in: .whitespaces).isEmpty
+        !draftName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !draftQuestion.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !draftAnswer.trimmingCharacters(in: .whitespaces).isEmpty
     }
     
     var body: some View {
@@ -27,7 +50,7 @@ struct SingleQuestionEditor: View {
                 ZStack {
                     HStack {
                         Button {
-                            onCancel()
+                            if(!isExisting) { onCancel() }
                             dismiss()
                         } label: {
                             Image(systemName: "xmark")
@@ -41,7 +64,7 @@ struct SingleQuestionEditor: View {
                         Spacer()
                     }
                     
-                    Text("New Landmark")
+                    Text(isExisting ? "Edit Landmark" : "New Landmark")
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(Theme.textOnPrimary)
@@ -51,19 +74,19 @@ struct SingleQuestionEditor: View {
                 
                 // — Input fields —
                 InputView(
-                    text: $spot.landmarkName,
+                    text: $draftName,
                     title: "Name",
                     placeholder: "Enter landmark name"
                 )
                 
                 InputView(
-                    text: $spot.question,
+                    text: $draftQuestion,
                     title: "Question",
                     placeholder: "Type your question"
                 )
                 
                 InputView(
-                    text: $spot.correctAnswer,
+                    text: $draftAnswer,
                     title: "Answer",
                     placeholder: "Correct answer"
                 )
@@ -75,7 +98,7 @@ struct SingleQuestionEditor: View {
                     
                     Spacer()
                     
-                    Picker("Trigger Radius", selection: $spot.triggerRadius) {
+                    Picker("Trigger Radius", selection: $draftRadius) {
                         ForEach(0..<201, id: \.self) { value in
                             Text("\(value)m").tag(value)
                         }
@@ -88,45 +111,52 @@ struct SingleQuestionEditor: View {
                 
                 Spacer()
                 Button {
+                    spot.landmarkName = draftName
+                    spot.question = draftQuestion
+                    spot.correctAnswer = draftAnswer
+                    spot.triggerRadius = draftRadius
                     dismiss()
                 } label: {
-                    Text("Next")
+                    Text("Save")
                         .font(.subheadline)
                         .foregroundColor(Theme.textOnPrimary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 20)
                         .background(isComplete ? Theme.success : Color.gray)
                         .cornerRadius(8)
                 }
                 .disabled(!isComplete)
+                Button {
+                    deleteAlert = true
+                } label: {
+                    Text("Delete landmark")
+                        .font(.subheadline)
+                        .foregroundColor(Theme.error)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Theme.textOnPrimary)
+                        .cornerRadius(8)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 16)
             .padding(.bottom, 50)
             .background(Color(Theme.primaryLight).ignoresSafeArea())
-            
-            // — Confirmation button in toolbar —
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("Next")
-                            .font(.subheadline)
-                            .foregroundColor(Theme.textOnPrimary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(isComplete ? Theme.success : Color.gray)
-                            .cornerRadius(8)
-                    }
-                    .disabled(!isComplete)
+            }
+            .alert("Delete Landmark", isPresented: $deleteAlert) {
+                Button("Yes") {
+                    onCancel()
+                    dismiss()
                 }
+                Button("No", role: .cancel) { }
+            } message: {
+                Text("Are you sure you want to delete this landmark?")
             }
             // hide the default nav bar
             .toolbar(.hidden, for: .navigationBar)
-        }
-        // Prevent dismiss-swipe when incomplete
-        .interactiveDismissDisabled(!isComplete)
+            // Prevent dismiss-swipe when incomplete
+            .interactiveDismissDisabled(!isComplete)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
 
@@ -141,6 +171,7 @@ struct SingleQuestionEditor_Previews: PreviewProvider {
         )
         return SingleQuestionEditor(
             spot: .constant(draft),
+            isExisting: true,
             onCancel: { /* simulate cancel */ }
         )
         .environment(\.colorScheme, .dark)

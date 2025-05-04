@@ -1,6 +1,5 @@
 import SwiftUI
 import MapKit
-import Firebase
 
 // Draft model representing a spot during route creation
 struct RouteSpotDraft: Identifiable {
@@ -12,15 +11,26 @@ struct RouteSpotDraft: Identifiable {
     var triggerRadius: Int = 50
 }
 
-// A basic MKMapView wrapper to support dropping landmarks onto the map
+// Custom annotation carrying the spot's UUID
+private class SpotAnnotation: MKPointAnnotation {
+    let spotID: UUID
+    init(spotID: UUID) {
+        self.spotID = spotID
+        super.init()
+    }
+}
+
+// A map view that supports dropping new landmarks and tapping existing ones
 struct DraggableMapView: UIViewRepresentable {
-    var spots: Binding<[RouteSpotDraft]>
+    @Binding var spots: [RouteSpotDraft]
     let initialCameraPosition: MapCameraPosition
-    var cameraPosition: Binding<MapCameraPosition> //driven by center button
+    @Binding var cameraPosition: MapCameraPosition
     var onLandmarkDrop: (CLLocationCoordinate2D) -> Void
+    var onSpotTap: (RouteSpotDraft) -> Void
     
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
+        map.delegate = context.coordinator
         map.showsUserLocation = true
         map.userTrackingMode = .none
         if let region = initialCameraPosition.region {
@@ -37,26 +47,27 @@ struct DraggableMapView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: MKMapView, context: Context) {
-        if let region = cameraPosition.wrappedValue.region {
+        if let region = cameraPosition.region {
             uiView.setRegion(region, animated: true)
         }
         uiView.removeAnnotations(uiView.annotations)
-        for draft in spots.wrappedValue {
-            let ann = MKPointAnnotation()
-            ann.coordinate = draft.coordinate
-            ann.title = draft.landmarkName.isEmpty ? "Untitled" : draft.landmarkName
-            uiView.addAnnotation(ann)
+        for draft in spots {
+            let annotation = SpotAnnotation(spotID: draft.id)
+            annotation.coordinate = draft.coordinate
+            annotation.title = draft.landmarkName.isEmpty ? "Untitled" : draft.landmarkName
+            uiView.addAnnotation(annotation)
         }
     }
     
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
     
-    class Coordinator: NSObject, UIDropInteractionDelegate {
+    class Coordinator: NSObject, MKMapViewDelegate, UIDropInteractionDelegate {
         var parent: DraggableMapView
-        var lastRegion: MKCoordinateRegion?
         init(_ parent: DraggableMapView) { self.parent = parent }
         
-        
+        // Handle dropping of new landmarks
         func dropInteraction(_ interaction: UIDropInteraction, performDrop session: UIDropSession) {
             guard let mapView = interaction.view as? MKMapView else { return }
             session.loadObjects(ofClass: NSString.self) { _ in
@@ -82,10 +93,18 @@ struct DraggableMapView: UIViewRepresentable {
                 self.parent.onLandmarkDrop(coord)
             }
         }
+        
+        // Handle taps on existing annotations
+        func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            guard let ann = view.annotation as? SpotAnnotation,
+                  let spot = parent.spots.first(where: { $0.id == ann.spotID })
+            else { return }
+            DispatchQueue.main.async {
+                self.parent.onSpotTap(spot)
+            }
+        }
     }
 }
-
-
 
 // Main builder view accepting metadata and allowing landmark placement
 struct MapBuilder: View {
@@ -98,6 +117,7 @@ struct MapBuilder: View {
     
     @State private var spots: [RouteSpotDraft] = []
     @State private var editingSpot: RouteSpotDraft?
+    @State private var isExisting: Bool = false
     @State private var showSuccessAlert = false
     @State private var showErrorAlert = false
     @State private var errorMessage = ""
@@ -109,127 +129,154 @@ struct MapBuilder: View {
         self.isNew = isNew
         let initialSpots = route.landmarks.map { lm -> RouteSpotDraft in
             var draft = RouteSpotDraft(
-                coordinate: .init(latitude: lm.latitude,
-                                  longitude: lm.longitude)
+                coordinate: .init(latitude: lm.latitude, longitude: lm.longitude)
             )
-            draft.landmarkName   = lm.name
-            draft.question       = lm.question
-            draft.correctAnswer  = lm.correctAnswer
-            draft.triggerRadius  = Int(lm.triggerRadius)
+            draft.landmarkName = lm.name
+            draft.question = lm.question
+            draft.correctAnswer = lm.correctAnswer
+            draft.triggerRadius = Int(lm.triggerRadius)
             return draft
         }
         _spots = State(initialValue: initialSpots)
     }
     
     var body: some View {
-        ZStack {
-            DraggableMapView(
-                spots:                 $spots,
-                initialCameraPosition: initialCameraPosition,
-                cameraPosition:        $cameraPosition
-            ) { coordinate in
-                let newSpot = RouteSpotDraft(coordinate: coordinate)
-                spots.append(newSpot)
-                editingSpot = newSpot
-            }
-            .ignoresSafeArea() // Ensure map fills the screen
-            
-            VStack {
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Theme.primary)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
+        NavigationStack {
+            ZStack {
+                DraggableMapView(
+                    spots: $spots,
+                    initialCameraPosition: initialCameraPosition,
+                    cameraPosition: $cameraPosition,
+                    onLandmarkDrop: { coord in
+                        isExisting = false
+                        let newSpot = RouteSpotDraft(coordinate: coord)
+                        spots.append(newSpot)
+                        editingSpot = newSpot
+                    },
+                    onSpotTap: { spot in
+                        isExisting = true
+                        editingSpot = spot
                     }
-                    .padding(.horizontal, 20)
+                )
+                .ignoresSafeArea()
+                
+                VStack {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Theme.primary)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        .padding(.horizontal, 20)
+                        Spacer()
+                        Text("Add Landmarks")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 5)
+                            .background(Theme.background)
+                            .foregroundColor(Theme.primary)
+                            .cornerRadius(8)
+                            .padding(.horizontal, 10)
+                        Spacer()
+                        Button {
+                            print("search")
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Theme.primary)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .padding(.vertical, 10)
                     Spacer()
-                    Text("Add Landmarks")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
+                    HStack {
+                        Button {
+                            locationManager.requestLocation()
+                            if let coord = locationManager.location?.coordinate {
+                                let span   = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                let region = MKCoordinateRegion(center: coord, span: span)
+                                cameraPosition = .region(region)
+                                // no need to reset to .automatic if we only ever care about the tap
+                            }
+                            DispatchQueue.main.async {
+                                cameraPosition = .automatic
+                            }
+                            
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Theme.primary)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        .padding(.horizontal, 20)
+                        Spacer()
+                        Button {
+                            handleDone()
+                        } label: {
+                            Image(systemName: "checkmark")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(spots.count >= 2 ? Color.green : Color.gray)
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
+                        .disabled(spots.count < 2)
                         .padding()
-                        .background(Theme.background)
-                        .foregroundColor(Theme.primary)
-                        .cornerRadius(8)
-                        .padding(.horizontal, 10)
-                    Spacer()
-                    Button {
-                        print("search")
-                    } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Theme.primary)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
                     }
-                    .padding(.horizontal, 20)
-                }
-                .padding(.vertical, 10)
-                Spacer()
-                HStack {
-                    Button {
-                        locationManager.requestLocation()
-                        if let coord = locationManager.location?.coordinate {
-                            let span   = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                            let region = MKCoordinateRegion(center: coord, span: span)
-                            cameraPosition = .region(region)
-                            // no need to reset to .automatic if we only ever care about the tap
+                    .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
+                        Button("OK", role: .cancel) {
+                            dismiss()
                         }
-                        DispatchQueue.main.async {
-                            cameraPosition = .automatic
+                    }
+                    .alert("Failed to create route", isPresented: $showErrorAlert) {
+                        Button("OK", role: .cancel) {
+                            dismiss()
                         }
-                        
-                    } label: {
-                        Image(systemName: "location.fill")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Theme.primary)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
+                    } message: {
+                        Text(errorMessage)
                     }
-                    .padding(.horizontal, 20)
-                    Spacer()
-                    Button {
-                        handleDone()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(spots.count >= 2 ? Color.green : Color.gray)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
-                    }
-                    .disabled(spots.count < 2)
-                    .padding()
-                }
-                .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
-                    Button("OK", role: .cancel) {
-                        dismiss()
-                    }
-                }
-                .alert("Failed to create route", isPresented: $showErrorAlert) {
-                    Button("OK", role: .cancel) {
-                        dismiss()
-                    }
-                } message: {
-                    Text(errorMessage)
                 }
             }
             .sheet(item: $editingSpot) { spot in
-                SingleQuestionEditor(spot: binding(for: spot), onCancel: {
-                    spots.removeAll { $0.id == spot.id }
-                })
+                SingleQuestionEditor(
+                    spot: binding(for: spot),
+                    isExisting: isExisting,
+                    onCancel: { spots.removeAll { $0.id == spot.id } }
+                )
             }
-            .toolbar(.hidden, for: .navigationBar)
+            /*NavigationLink(
+              destination: SingleQuestionEditor(
+                spot: binding(for: editingSpot),
+                isExisting: isExisting,
+                onCancel: { spots.removeAll { $0.id == spot.id } }
+              ),
+              tag: someID,
+              selection: $editingID
+            ) {
+              EmptyView()
+            }*/
+            .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
+                Button("OK", role: .cancel) { dismiss() }
+            }
+            .alert("Failed to create route", isPresented: $showErrorAlert) {
+                Button("OK", role: .cancel) { dismiss() }
+            } message: {
+                Text(errorMessage)
+            }
         }
     }
     
@@ -318,6 +365,7 @@ struct MapBuilder: View {
                 errorMessage   = error.localizedDescription
                 showErrorAlert = true
             }
+            await gameViewModel.fetchRoutes()
         }
     }
 }
