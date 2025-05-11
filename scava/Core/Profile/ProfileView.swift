@@ -105,7 +105,6 @@ struct ProfileView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(Theme.primary, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarColorScheme(.dark, for: .navigationBar)
                 .alert("Sign Out?", isPresented: $showSignOutAlert) {
                                     Button("Cancel", role: .cancel) { }
                                     Button("Sign Out", role: .destructive) {

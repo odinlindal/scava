@@ -27,6 +27,20 @@ struct scavaApp: App {
         FirebaseApp.configure()
         UIRefreshControl.appearance().backgroundColor = UIColor(Theme.background)
         UIRefreshControl.appearance().tintColor      = UIColor(Theme.primary)
+        
+        let navBarAppearance = UINavigationBarAppearance()
+        navBarAppearance.configureWithOpaqueBackground()
+        navBarAppearance.backgroundColor = UIColor(Theme.primary)
+        navBarAppearance.titleTextAttributes = [
+            .foregroundColor: UIColor.white
+        ]
+        navBarAppearance.largeTitleTextAttributes = [
+            .foregroundColor: UIColor.white
+        ]
+        
+        UINavigationBar.appearance().standardAppearance = navBarAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance  = navBarAppearance
+        UINavigationBar.appearance().compactAppearance     = navBarAppearance
     }
     
     var body: some Scene {

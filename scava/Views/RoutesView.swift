@@ -13,74 +13,80 @@ struct RoutesView: View {
     @Binding var showRouteDetail: Bool
     @EnvironmentObject var gameViewModel: GameViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var locationManager: LocationManager
+    @State private var isCreatingRoute = false
     
-    private var isLoading: Bool {
-        gameViewModel.isLoading
-      }
-
+    private var isLoading: Bool { gameViewModel.isLoading }
+    
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Theme.background.ignoresSafeArea()
-                VStack {
-                    if gameViewModel.isLoading {
-                        ScrollView {
-                            VStack {
-                                Spacer(minLength: 200)
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: Theme.primary))
-                                    .scaleEffect(1.5)
-                                    .padding()
-                                Spacer()
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            
+            VStack(spacing: 10) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(1.5)
+                        .padding(.top, 200)
+                }
+                else if routesToShow.isEmpty {
+                    Spacer()
+                    Text("No routes available")
+                        .font(.title2)
+                        .foregroundColor(Theme.textPrimary)
+                    Button("Refresh") {
+                        Task { await gameViewModel.fetchRoutes() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Spacer()
+                }
+                else {
+                    ScrollView {
+                        LazyVStack(spacing: 20) {
+                            ForEach(routesToShow) { route in
+                                RouteCard(
+                                    route: route,
+                                    selectedRoute: $selectedRoute,
+                                    showRouteDetail: $showRouteDetail
+                                )
                             }
-                        }
-                    } else if routesToShow.isEmpty {
-                        VStack {
-                            Text("No routes available")
-                                .foregroundColor(Theme.textPrimary)
-                                .font(.title2)
-                            Button("Refresh") {
-                                Task {
-                                    await gameViewModel.fetchRoutes()
-                                }
-                            }
-                            .padding()
-                            .background(Theme.primary)
-                            .foregroundColor(Theme.textOnPrimary)
-                            .cornerRadius(10)
                         }
                         .padding()
+                    }
+                    .refreshable { await gameViewModel.fetchRoutes() }
+                }
+            }
+            .sheet(isPresented: $isCreatingRoute) {
+                RouteMetaDataScreen()
+                    .environmentObject(gameViewModel)
+                    .environmentObject(locationManager)
+            }
+        }
+        .navigationTitle("Routes")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    if authViewModel.currentUser != nil {
+                        isCreatingRoute = true
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 20) {
-                                ForEach(routesToShow) { route in
-                                    RouteCard(
-                                        route: route,
-                                        selectedRoute: $selectedRoute,
-                                        showRouteDetail: $showRouteDetail
-                                    )
-                                }
-                            }
-                            .padding()
-                        }
-                        .refreshable {
-                            await gameViewModel.fetchRoutes()
-                        }
+                        selectedTab = 2
                     }
+                } label: {
+                    Image(systemName: "plus")
+                        .padding(8)
+                        .background(Theme.secondary)
+                        .clipShape(Circle())
+                        .shadow(radius: 4)
+                        .foregroundColor(Theme.primary)
                 }
-                .background(Theme.background.ignoresSafeArea())
-                .navigationTitle("Routes")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(Theme.primary, for: .navigationBar)
-                .toolbarBackground(.visible, for: .navigationBar)
-                .toolbarColorScheme(.dark, for: .navigationBar)
-                .onAppear {
-                    if routesToShow.isEmpty {
-                        Task {
-                            await gameViewModel.fetchRoutes()
-                        }
-                    }
-                }
+            }
+        }
+        .toolbarBackground(Theme.primary, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .onAppear {
+            if routesToShow.isEmpty {
+                Task { await gameViewModel.fetchRoutes() }
             }
         }
     }
@@ -107,7 +113,7 @@ private struct RouteCard: View {
     @Binding var selectedRoute: Route?
     @Binding var showRouteDetail: Bool
     @EnvironmentObject var authViewModel: AuthViewModel
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let imageURL = route.imageURL {
@@ -121,28 +127,28 @@ private struct RouteCard: View {
                 Color.clear
                     .frame(height: 120)
             }
-
+            
             Text(route.name)
                 .font(.title2)
                 .foregroundColor(Theme.textPrimary)
-
+            
             Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
                 .foregroundColor(Theme.textSecondary)
                 .font(.caption)
-
-              Button {
+            
+            Button {
                 selectedRoute = route
                 showRouteDetail = true
-              } label: {
-                  Text(authViewModel.currentUser?.id == route.makerID ? "View/Edit Route" : "View Route")
-                      .fontWeight(.semibold)
-                      .frame(maxWidth: .infinity)
-                      .padding()
-                      .background(Theme.primary)
-                      .foregroundColor(Theme.textOnPrimary)
-                      .cornerRadius(8)
-              }
-              .contentShape(Rectangle())
+            } label: {
+                Text(authViewModel.currentUser?.id == route.makerID ? "View/Edit Route" : "View Route")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Theme.primary)
+                    .foregroundColor(Theme.textOnPrimary)
+                    .cornerRadius(8)
+            }
+            .contentShape(Rectangle())
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -180,7 +186,7 @@ struct RoutesView_Previews: PreviewProvider {
             makerID: "user123"
         )
         let routes = [sampleRoute]
-
+        
         return RoutesView(
             routesToShow: routes,
             selectedTab: .constant(0),
