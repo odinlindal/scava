@@ -20,13 +20,13 @@ struct QuestionView: View {
                         .foregroundColor(Theme.textOnPrimary)
                     
                     Spacer()
-                    /*Button(action: {
+                    Button(action: {
                         isPresented = false
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(Theme.textOnPrimary)
                             .imageScale(.large)
-                    }*/
+                    }
                 }
                 // Question
                 Text(landmark.question)
@@ -73,7 +73,7 @@ struct QuestionView: View {
                         }
                     }
                 }) {
-                    Text(showFeedback ? (isCorrect ? "Continuing..." : "Try Again") : "Submit")
+                    Text("Submit")
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Theme.textOnPrimary)
@@ -86,9 +86,10 @@ struct QuestionView: View {
             .padding()
             .background(Theme.primary)
             .cornerRadius(20)
-            .padding(.top, -100) // Move it further up on the screen
+            
         }
-        .frame(maxHeight: 300)
+        .padding()
+        .frame(maxHeight: 100)
         .transition(.move(edge: .top))
         .onAppear {
             isTextFieldFocused = true

@@ -242,6 +242,7 @@ struct MapBuilder: View {
             .sheet(item: $editingSpot) { spot in
                 SingleQuestionEditor(
                     spot: binding(for: spot),
+                    allSpots: $spots,
                     isExisting: isExisting,
                     onCancel: { spots.removeAll { $0.id == spot.id } }
                 )

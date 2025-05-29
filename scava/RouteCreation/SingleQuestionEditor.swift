@@ -10,6 +10,7 @@ import CoreLocation
 
 struct SingleQuestionEditor: View {
     @Binding var spot: RouteSpotDraft
+    @Binding var allSpots: [RouteSpotDraft]
     let isExisting: Bool
     var onCancel: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -19,12 +20,15 @@ struct SingleQuestionEditor: View {
     @State private var draftQuestion: String
     @State private var draftAnswer: String
     @State private var draftRadius: Int
+    @State private var showRepositionMap = false
     
     init(spot: Binding<RouteSpotDraft>,
+         allSpots: Binding<[RouteSpotDraft]>,
          isExisting: Bool,
          onCancel: @escaping () -> Void)
     {
         self._spot = spot
+        self._allSpots   = allSpots
         self.isExisting = isExisting
         self.onCancel = onCancel
         self.deleteAlert = false
@@ -126,6 +130,19 @@ struct SingleQuestionEditor: View {
                         .cornerRadius(8)
                 }
                 .disabled(!isComplete)
+                if(isExisting){
+                    Button {
+                        showRepositionMap = true
+                    } label: {
+                        Text("Reposition landmark")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.textOnPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Theme.secondary)
+                            .cornerRadius(8)
+                    }
+                }
                 Button {
                     deleteAlert = true
                 } label: {
@@ -157,23 +174,11 @@ struct SingleQuestionEditor: View {
             // Prevent dismiss-swipe when incomplete
             .interactiveDismissDisabled(!isComplete)
             .ignoresSafeArea(.keyboard, edges: .bottom)
-    }
-}
-
-struct SingleQuestionEditor_Previews: PreviewProvider {
-    static var previews: some View {
-        let draft = RouteSpotDraft(
-            coordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            landmarkName: "Golden Gate",
-            question: "What color is it?",
-            correctAnswer: "Orange",
-            triggerRadius: 50
-        )
-        return SingleQuestionEditor(
-            spot: .constant(draft),
-            isExisting: true,
-            onCancel: { /* simulate cancel */ }
-        )
-        .environment(\.colorScheme, .dark)
+            .fullScreenCover(isPresented: $showRepositionMap) {
+                  RepositionMapView(
+                    spot: $spot,
+                    otherSpots: allSpots.filter { $0.id != spot.id }
+                  )
+            }
     }
 }

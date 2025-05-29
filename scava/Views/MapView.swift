@@ -180,20 +180,7 @@ struct MapView: View {
                                 .cornerRadius(10)
                             
                             Spacer()
-                            
-                            //DEBUG
-                            /*Button(action: {
-                                gameViewModel.simulateAppRelaunch()
-                            }) {
-                                Image(systemName: "arrow.clockwise.circle.fill")
-                                    .foregroundColor(Theme.textOnPrimary)
-                                    .padding()
-                                    .background(Theme.primary)
-                                    .clipShape(Circle())
-                            }
-                            .padding()*/
-                            //END DEBUG
-                            
+
                             Button(action: {
                                 showStartRouteAlert = true
                             }) {
