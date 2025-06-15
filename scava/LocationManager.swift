@@ -71,6 +71,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             }
         }
     }
+    
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
@@ -83,6 +84,14 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         Task { @MainActor in
             self.heading = newHeading
             NotificationCenter.default.post(name: .init("CLHeadingDidChangeNotification"), object: newHeading)
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("❌ Location manager failed with error: \(error.localizedDescription)")
+        // If we're using requestLocation(), we should restart location updates on failure
+        if error is CLError {
+            locationManager.startUpdatingLocation()
         }
     }
 }

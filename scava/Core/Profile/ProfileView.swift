@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import MapKit
 
 struct ProfileView: View {
     @State private var showSignOutAlert = false
     @State private var showDeleteAccountAlert = false
     @State private var isCreatingRoute = false
+    @State private var routeMetadata: (name: String, description: String, difficulty: String)?
     @Binding var selectedTab: Int
     @Binding var selectedRoute: Route?
     @Binding var showRouteDetail: Bool
@@ -106,23 +108,23 @@ struct ProfileView: View {
                 .toolbarBackground(Theme.primary, for: .navigationBar)
                 .toolbarBackground(.visible, for: .navigationBar)
                 .alert("Sign Out?", isPresented: $showSignOutAlert) {
-                                    Button("Cancel", role: .cancel) { }
-                                    Button("Sign Out", role: .destructive) {
-                                        authViewModel.signOut()
-                                    }
-                                } message: {
-                                    Text("Are you sure you want to sign out?")
-                                }
+                    Button("Cancel", role: .cancel) { }
+                    Button("Sign Out", role: .destructive) {
+                        authViewModel.signOut()
+                    }
+                } message: {
+                    Text("Are you sure you want to sign out?")
+                }
                 .alert("Delete Account?", isPresented: $showDeleteAccountAlert) {
-                                    Button("Cancel", role: .cancel) { }
-                                    Button("Yes", role: .destructive) {
-                                        Task {
-                                            try await authViewModel.deleteAccount()
-                                        }
-                                    }
-                                } message: {
-                                    Text("Are you sure you want to delete your account?")
-                                }
+                    Button("Cancel", role: .cancel) { }
+                    Button("Yes", role: .destructive) {
+                        Task {
+                            try await authViewModel.deleteAccount()
+                        }
+                    }
+                } message: {
+                    Text("Are you sure you want to delete your account?")
+                }
             } else {
                 Text("No user logged in")
                     .foregroundColor(Theme.textSecondary)
@@ -130,11 +132,47 @@ struct ProfileView: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
-        .sheet(isPresented: $isCreatingRoute) {
-                RouteMetaDataScreen()
-                .environmentObject(gameViewModel)
-                .environmentObject(locationManager)
-            }
+        .fullScreenCover(isPresented: $isCreatingRoute) {
+            RouteMetaDataScreen(onNext: { name, description, difficulty in
+                routeMetadata = (name, description, difficulty)
+                isCreatingRoute = false
+            })
+            .environmentObject(gameViewModel)
+            .environmentObject(locationManager)
+        }
+        .fullScreenCover(item: Binding(
+            get: { routeMetadata.map { metadata in
+                Route(
+                    id: UUID(),
+                    name: metadata.name,
+                    description: metadata.description,
+                    difficulty: metadata.difficulty,
+                    distance: 0,
+                    estimatedTime: 0,
+                    landmarks: [],
+                    imageURL: nil,
+                    makerID: authViewModel.currentUser?.id ?? ""
+                )
+            }},
+            set: { _ in routeMetadata = nil }
+        )) { route in
+            MapBuilder(
+                route: route,
+                initialCameraPosition: .region(
+                    MKCoordinateRegion(
+                        center: locationManager.location?.coordinate ?? .init(latitude: 0, longitude: 0),
+                        span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    )
+                ),
+                isNew: true,
+                onComplete: {
+                    routeMetadata = nil
+                }
+            )
+            .environmentObject(gameViewModel)
+            .environmentObject(locationManager)
+            .environmentObject(authViewModel)
+        }
     }
 }
 

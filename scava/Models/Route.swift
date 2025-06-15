@@ -10,9 +10,12 @@ struct Route: Identifiable, Codable {
     let landmarks: [Landmark]
     let imageURL: String?
     let makerID: String
+    let totalRatings: Int
+    let averageRating: Double
     
     enum CodingKeys: String, CodingKey {
         case id, name, description, difficulty, distance, estimatedTime, landmarks, imageURL, makerID
+        case totalRatings, averageRating
     }
     
     init(id: UUID = UUID(), 
@@ -23,7 +26,9 @@ struct Route: Identifiable, Codable {
          estimatedTime: TimeInterval,
          landmarks: [Landmark],
          imageURL: String? = nil,
-         makerID : String) {
+         makerID: String,
+         totalRatings: Int = 0,
+         averageRating: Double = 0.0) {
         self.id = id
         self.name = name
         self.description = description
@@ -33,6 +38,8 @@ struct Route: Identifiable, Codable {
         self.landmarks = landmarks
         self.imageURL = imageURL
         self.makerID = makerID
+        self.totalRatings = totalRatings
+        self.averageRating = averageRating
     }
     
     init(from decoder: Decoder) throws {
@@ -46,6 +53,8 @@ struct Route: Identifiable, Codable {
         landmarks = try container.decode([Landmark].self, forKey: .landmarks)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
         makerID = try container.decode(String.self, forKey: .makerID)
+        totalRatings = try container.decodeIfPresent(Int.self, forKey: .totalRatings) ?? 0
+        averageRating = try container.decodeIfPresent(Double.self, forKey: .averageRating) ?? 0.0
     }
     
     func encode(to encoder: Encoder) throws {
@@ -59,5 +68,7 @@ struct Route: Identifiable, Codable {
         try container.encode(landmarks, forKey: .landmarks)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
         try container.encode(makerID, forKey: .makerID)
+        try container.encode(totalRatings, forKey: .totalRatings)
+        try container.encode(averageRating, forKey: .averageRating)
     }
 } 

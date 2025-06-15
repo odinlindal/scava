@@ -27,7 +27,9 @@ class FirestoreService: ObservableObject {
                         )
                     } ?? [],
                     imageURL: data["imageURL"] as? String,
-                    makerID: data["makerID"] as? String ?? ""
+                    makerID: data["makerID"] as? String ?? "",
+                    totalRatings: data["totalRatings"] as? Int ?? 0,
+                    averageRating: data["averageRating"] as? Double ?? 0
                 )
             }
         } catch {

@@ -33,55 +33,65 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationView {
-                RoutesView(
-                    routesToShow: gameViewModel.routes,
-                    selectedTab: $selectedTab,
-                    selectedRoute: $selectedRoute,
-                    showRouteDetail: $showRouteDetail
-                )
-                .environmentObject(gameViewModel)
-                .sheet(isPresented: $showRouteDetail) {
-                    if let route = selectedRoute {
-                        RouteDetailView(route: route, selectedTab: $selectedTab)
-                    }
-                }
-            }
-            .tabItem {
-                Label("Routes", systemImage: "map")
-            }
-            .tag(0)
-
-            MapView(selectedTab: $selectedTab)
-                .environmentObject(gameViewModel)
-                .environmentObject(locationManager)
-                .tabItem {
-                    Label("Map", systemImage: "location")
-                }
-                .tag(1)
-
-            Group {
-                if authViewModel.userSession != nil {
-                    ProfileView(
-                        selectedTab: $selectedTab,
-                        selectedRoute: $selectedRoute,
-                        showRouteDetail: $showRouteDetail
-                    )
-                    .environmentObject(authViewModel)
+        Group {
+            if gameViewModel.isRouteActive {
+                // When route is active, only show the MapView
+                MapView(selectedTab: $selectedTab)
                     .environmentObject(gameViewModel)
                     .environmentObject(locationManager)
-                } else {
-                    LoginView()
-                        .environmentObject(authViewModel)
+            } else {
+                // When no route is active, show the full TabView
+                TabView(selection: $selectedTab) {
+                    NavigationStack {
+                        RoutesView(
+                            routesToShow: gameViewModel.routes,
+                            selectedTab: $selectedTab,
+                            selectedRoute: $selectedRoute,
+                            showRouteDetail: $showRouteDetail
+                        )
+                        .environmentObject(gameViewModel)
+                        .sheet(isPresented: $showRouteDetail) {
+                            if let route = selectedRoute {
+                                RouteDetailView(route: route, selectedTab: $selectedTab)
+                            }
+                        }
+                    }
+                    .tabItem {
+                        Label("Routes", systemImage: "map")
+                    }
+                    .tag(0)
+
+                    MapView(selectedTab: $selectedTab)
+                        .environmentObject(gameViewModel)
+                        .environmentObject(locationManager)
+                        .tabItem {
+                            Label("Map", systemImage: "location")
+                        }
+                        .tag(1)
+
+                    Group {
+                        if authViewModel.userSession != nil {
+                            ProfileView(
+                                selectedTab: $selectedTab,
+                                selectedRoute: $selectedRoute,
+                                showRouteDetail: $showRouteDetail
+                            )
+                            .environmentObject(authViewModel)
+                            .environmentObject(gameViewModel)
+                            .environmentObject(locationManager)
+                        } else {
+                            LoginView()
+                                .environmentObject(authViewModel)
+                        }
+                    }
+                    .tabItem {
+                        Label("Profile", systemImage: "person")
+                    }
+                    .tag(2)
                 }
+                .accentColor(Theme.secondary)
             }
-            .tabItem {
-                Label("Profile", systemImage: "person")
-            }
-            .tag(2)
         }
-        .accentColor(Theme.secondary)
         .onAppear {
             // optional fallback
             if UserDefaults.standard.bool(forKey: "activeRouteInProgress") {

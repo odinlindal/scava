@@ -96,7 +96,7 @@ extension LoginView: AuthenticationFormProtocol {
 }
 
 #Preview("Default") {
-    NavigationView {
+    NavigationStack {
         LoginView()
     }
 }

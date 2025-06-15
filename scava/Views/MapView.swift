@@ -36,6 +36,7 @@ struct MapView: View {
                     showRoutePreview = false
                 }
             }
+            .toolbar(gameViewModel.isRouteActive ? .hidden : .visible, for: .navigationBar)
             
             // Active Route UI
             if gameViewModel.isRouteActive {
@@ -60,31 +61,45 @@ struct MapView: View {
                     }
                 }
             }
-            
-            // Question View Overlay
-            if gameViewModel.showQuestion {
-                Color.black.opacity(0.5)
-                    .ignoresSafeArea()
-                
-                if let landmark = gameViewModel.currentLandmark {
-                    QuestionView(
-                        landmark: landmark,
-                        userAnswer: $userAnswer,
-                        isPresented: $gameViewModel.showQuestion,
-                        keyboardFocus: .constant(false)
-                    ) { answer in
+        }
+        .fullScreenCover(isPresented: $gameViewModel.showQuestion) {
+            if let landmark = gameViewModel.currentLandmark {
+                QuestionView(
+                    landmark: landmark,
+                    userAnswer: $userAnswer,
+                    isPresented: $gameViewModel.showQuestion,
+                    keyboardFocus: .constant(false),
+                    onSubmit: { answer in
                         let isCorrect = gameViewModel.validateAnswer(answer)
                         if isCorrect {
                             gameViewModel.showQuestion = false
-                            userAnswer = ""
+                            // Only clear the answer when the question is dismissed
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                userAnswer = ""
+                            }
                         }
+                    },
+                    onGiveUp: {
+                        gameViewModel.giveUpOnLandmark()
+                        userAnswer = ""
                     }
-                }
+                )
             }
         }
         .fullScreenCover(isPresented: $showRouteDetail) {
             if let route = gameViewModel.activeRoute {
                 RouteDetailView(route: route, selectedTab: $selectedTab)
+            }
+        }
+        .fullScreenCover(isPresented: $gameViewModel.showCompletionView) {
+            if let route = gameViewModel.activeRoute,
+               let elapsedTime = gameViewModel.elapsedTime {
+                RouteCompletionView(
+                    route: route,
+                    elapsedTime: elapsedTime,
+                    isPresented: $gameViewModel.showCompletionView
+                )
+                .environmentObject(gameViewModel)
             }
         }
         .alert("End Route?", isPresented: $showStartRouteAlert) {
@@ -97,20 +112,6 @@ struct MapView: View {
             }
         } message: {
             Text("Are you sure you want to end this route?")
-        }
-        .alert("Route Completed!", isPresented: $gameViewModel.showCompletionAlert) {
-            Button("Finish") {
-                print("🏁 Finishing route")
-                if gameViewModel.isRouteCompleted {
-                    withAnimation {
-                        gameViewModel.stopRoute()
-                        showRouteDetail = false
-                        selectedTab = 0
-                    }
-                }
-            }
-        } message: {
-            Text("Congratulations! You've completed all landmarks on this route.")
         }
         .interactiveDismissDisabled(true)
     }

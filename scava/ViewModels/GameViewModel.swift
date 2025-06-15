@@ -21,13 +21,19 @@ class GameViewModel: ObservableObject {
         }
     }
     @Published var showCompletionAlert: Bool = false
+    @Published var showCompletionView: Bool = false
     @Published var isRouteActive: Bool = false
     @Published var isRouteCompleted = false
     @Published var isLoading: Bool = true
+    @Published var ratingError: String?
+    @Published var showRatingError = false
+    @Published var finalElapsedTime: TimeInterval?
     
     private var randomizedLandmarks: [Landmark] = []
     private var locationManager: LocationManager!
     private let firestoreService = FirestoreService()
+    private var routeStartTime: Date?
+    private let ratingService = RatingService()
     
     private struct RouteState: Codable {
         let route: Route
@@ -147,6 +153,10 @@ class GameViewModel: ObservableObject {
         UserDefaults.standard.set(true, forKey: "activeRouteInProgress")
         saveCurrentRouteState()
         
+        // Start timing
+        routeStartTime = Date()
+        finalElapsedTime = nil  // Reset final elapsed time
+        
         // Arrange landmarks in a logical order
         if let currentLocation = locationManager.location {
             sortLandmarks(route: route, currentLocation: currentLocation)
@@ -248,9 +258,15 @@ class GameViewModel: ObservableObject {
         currentLandmark = nil
         showQuestion = false
         showCompletionAlert = false
+        showCompletionView = false
         isRouteCompleted = false
         completedLandmarks.removeAll()
         randomizedLandmarks.removeAll()
+        routeStartTime = nil
+        finalElapsedTime = nil  // Clear the final elapsed time
+        
+        // Request location to zoom out to user's location
+        locationManager.requestLocation()
     }
     
     func checkLocation(_ location: CLLocation) {
@@ -301,10 +317,38 @@ class GameViewModel: ObservableObject {
             if let route = activeRoute, completedLandmarks.count == route.landmarks.count {
                 print("🎉 Route completed!")
                 isRouteCompleted = true
-                showCompletionAlert = true
+                // Stop the timer and store the final time
+                if let startTime = routeStartTime {
+                    finalElapsedTime = Date().timeIntervalSince(startTime)
+                }
+                showCompletionView = true
             }
         }
         return isCorrect
+    }
+    
+    func giveUpOnLandmark() {
+        guard let landmark = currentLandmark else { return }
+        print("⏭️ Giving up on landmark: \(landmark.name)")
+        
+        // Mark the landmark as completed even though the answer wasn't correct
+        completedLandmarks.insert(landmark.id)
+        saveCurrentRouteState()
+        
+        // Check if this was the last landmark
+        if let route = activeRoute, completedLandmarks.count == route.landmarks.count {
+            print("🎉 Route completed!")
+            isRouteCompleted = true
+            // Stop the timer and store the final time
+            if let startTime = routeStartTime {
+                finalElapsedTime = Date().timeIntervalSince(startTime)
+            }
+            showCompletionView = true
+        }
+        
+        // Clear the current landmark and hide the question
+        currentLandmark = nil
+        showQuestion = false
     }
     
     func endRouteAndReturnHome(selectedTab: Binding<Int>, dismiss: DismissAction?) {
@@ -449,7 +493,7 @@ class GameViewModel: ObservableObject {
         let distanceMiles = totalMeters / 1_609.34
         let estimatedTime = distanceMiles * 20
 
-        // build a brand‑new Route preserving the base’s id, name, etc.
+        // build a brand‑new Route preserving the base's id, name, etc.
         return Route(
           id:            base.id,
           name:          base.name,
@@ -495,5 +539,30 @@ class GameViewModel: ObservableObject {
         }
       }
     
+    var elapsedTime: TimeInterval? {
+        if let finalTime = finalElapsedTime {
+            return finalTime
+        }
+        guard let startTime = routeStartTime else { return nil }
+        return Date().timeIntervalSince(startTime)
+    }
+    
+    func rateRoute(_ route: Route, rating: Int) async {
+        do {
+            let newAverage = try await ratingService.rateRoute(routeID: route.id.uuidString, rating: rating)
+            // Fetch the latest route data to ensure we have the most up-to-date ratings
+            let updatedRoutes = try await firestoreService.fetchRoutes()
+            if let updatedRoute = updatedRoutes.first(where: { $0.id == route.id }) {
+                // Update the route in our local array with the fresh data
+                if let index = routes.firstIndex(where: { $0.id == route.id }) {
+                    routes[index] = updatedRoute
+                    saveRoutesToCache(routes)
+                }
+            }
+        } catch {
+            ratingError = error.localizedDescription
+            showRatingError = true
+        }
+    }
 }
 

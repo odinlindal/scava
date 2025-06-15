@@ -156,7 +156,18 @@ struct RouteDetailView: View {
             Text("Are you sure you want to delete this route?")
         }
         .fullScreenCover(isPresented: $showMapBuilder) {
-            MapBuilder(route: route, initialCameraPosition: cameraPosition, isNew: false)
+            MapBuilder(
+                route: route,
+                initialCameraPosition: cameraPosition,
+                isNew: false,
+                onComplete: {
+                    showMapBuilder = false
+                    dismiss()
+                }
+            )
+            .environmentObject(gameViewModel)
+            .environmentObject(locationManager)
+            .environmentObject(authViewModel)
         }
     }
     private func handleDelete() {
@@ -201,7 +212,7 @@ private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         RouteDetailView(
             route: Route(
                 id: UUID(),

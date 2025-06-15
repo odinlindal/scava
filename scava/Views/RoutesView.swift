@@ -56,34 +56,12 @@ struct RoutesView: View {
                     .refreshable { await gameViewModel.fetchRoutes() }
                 }
             }
-            .sheet(isPresented: $isCreatingRoute) {
+            .fullScreenCover(isPresented: $isCreatingRoute) {
                 RouteMetaDataScreen()
                     .environmentObject(gameViewModel)
                     .environmentObject(locationManager)
             }
         }
-        .navigationTitle("Routes")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    if authViewModel.currentUser != nil {
-                        isCreatingRoute = true
-                    } else {
-                        selectedTab = 2
-                    }
-                } label: {
-                    Image(systemName: "plus")
-                        .padding(8)
-                        .background(Theme.secondary)
-                        .clipShape(Circle())
-                        .shadow(radius: 4)
-                        .foregroundColor(Theme.primary)
-                }
-            }
-        }
-        .toolbarBackground(Theme.primary, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
         .onAppear {
             if routesToShow.isEmpty {
                 Task { await gameViewModel.fetchRoutes() }
@@ -114,6 +92,13 @@ private struct RouteCard: View {
     @Binding var showRouteDetail: Bool
     @EnvironmentObject var authViewModel: AuthViewModel
     
+    private var ratingText: String {
+        if route.totalRatings == 0 {
+            return "No ratings yet"
+        }
+        return String(format: "%.1f ★ (%d)", route.averageRating, route.totalRatings)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let imageURL = route.imageURL {
@@ -132,9 +117,15 @@ private struct RouteCard: View {
                 .font(.title2)
                 .foregroundColor(Theme.textPrimary)
             
-            Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
-                .foregroundColor(Theme.textSecondary)
-                .font(.caption)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(String(format: "%.1f", route.distance)) miles • \(route.difficulty)")
+                    .foregroundColor(Theme.textSecondary)
+                    .font(.caption)
+                
+                Text(ratingText)
+                    .foregroundColor(Theme.textSecondary)
+                    .font(.caption)
+            }
             
             Button {
                 selectedRoute = route
@@ -183,7 +174,9 @@ struct RoutesView_Previews: PreviewProvider {
             estimatedTime: 50,
             landmarks: [],
             imageURL: "grcroute",
-            makerID: "user123"
+            makerID: "user123",
+            totalRatings: 3,
+            averageRating: 4.3
         )
         let routes = [sampleRoute]
         

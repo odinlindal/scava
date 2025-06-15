@@ -111,6 +111,7 @@ struct MapBuilder: View {
     var route: Route
     let isNew: Bool
     let initialCameraPosition: MapCameraPosition
+    var onComplete: (() -> Void)?
     @EnvironmentObject private var gameViewModel: GameViewModel
     @EnvironmentObject private var locationManager: LocationManager
     @Environment(\.dismiss) private var dismiss
@@ -123,10 +124,11 @@ struct MapBuilder: View {
     @State private var errorMessage = ""
     @State private var cameraPosition: MapCameraPosition = .automatic
     
-    init(route: Route, initialCameraPosition: MapCameraPosition, isNew: Bool = false) {
+    init(route: Route, initialCameraPosition: MapCameraPosition, isNew: Bool = false, onComplete: (() -> Void)? = nil) {
         self.route = route
         self.initialCameraPosition = initialCameraPosition
         self.isNew = isNew
+        self.onComplete = onComplete
         let initialSpots = route.landmarks.map { lm -> RouteSpotDraft in
             var draft = RouteSpotDraft(
                 coordinate: .init(latitude: lm.latitude, longitude: lm.longitude)
@@ -239,7 +241,7 @@ struct MapBuilder: View {
                     }
                 }
             }
-            .sheet(item: $editingSpot) { spot in
+            .fullScreenCover(item: $editingSpot) { spot in
                 SingleQuestionEditor(
                     spot: binding(for: spot),
                     allSpots: $spots,
@@ -248,7 +250,11 @@ struct MapBuilder: View {
                 )
             }
             .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
-                Button("OK", role: .cancel) { dismiss() }
+                Button("OK", role: .cancel) { 
+                    if onComplete == nil {
+                        dismiss()
+                    }
+                }
             }
             .alert("Failed to create route", isPresented: $showErrorAlert) {
                 Button("OK", role: .cancel) { dismiss() }
@@ -281,6 +287,7 @@ struct MapBuilder: View {
                     )
                 }
                 showSuccessAlert = true
+                onComplete?()
             } catch {
                 errorMessage   = error.localizedDescription
                 showErrorAlert = true

@@ -10,116 +10,88 @@ struct RouteMetaDataScreen: View {
     @State private var routeName: String = ""
     @State private var routeDescription: String = ""
     @State private var routeDifficulty: String = "Moderate"
-    @State private var isShowingMapBuilder = false
+    var onNext: (String, String, String) -> Void
     
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                ZStack {
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Theme.primary)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
+        ZStack {
+            Theme.primaryLight.ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 24) {
+                    // — Custom header —
+                    ZStack {
+                        HStack {
+                            Button {
+                                dismiss()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Theme.primary)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 4)
+                            }
+                            Spacer()
                         }
+                        Text("New Route")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(Theme.textOnPrimary)
                         Spacer()
                     }
-                    Text("New Route")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(Theme.textOnPrimary)
-                    Spacer()
-                }
-                
-                .padding(.top, 16)
-                .frame(maxWidth: .infinity, alignment: .center)
-                Text("")
-                // ─────────── Inputs ───────────
-                InputView(
-                    text: $routeName,
-                    title: "Route Name",
-                    placeholder: "Enter route name"
-                )
-                InputView(
-                    text: $routeDescription,
-                    title: "Description",
-                    placeholder: "Enter description"
-                )
-                
-                // Custom picker (you can leave it as-is or wrap in its own view)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Difficulty")
-                        .foregroundColor(Theme.textOnPrimary)
-                        .fontWeight(.semibold)
-                        .font(.footnote)
-                    Picker("Difficulty", selection: $routeDifficulty) {
-                        Text("Easy").tag("Easy")
-                        Text("Moderate").tag("Moderate")
-                        Text("Hard").tag("Hard")
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                Spacer()
-                
-                // ─────────── Next Button ───────────
-                Button {
-                    isShowingMapBuilder = true
-                } label: {
-                    Text("Next")
-                        .font(.subheadline)
-                        .foregroundColor(Theme.textOnPrimary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(routeName.isEmpty || routeDescription.isEmpty
-                                    ? Color.gray
-                                    : Theme.success)
-                        .cornerRadius(8)
-                }
-                .disabled(routeName.isEmpty || routeDescription.isEmpty)
-            }
-            // ─────────── Styling ───────────
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 50)
-            .background(Color(Theme.primaryLight))
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .fullScreenCover(isPresented: $isShowingMapBuilder,
-                         onDismiss: {
-            // once MapBuilder goes away, also pop this screen
-            dismiss()
-        }) {
-            let newRoute = Route(
-                id: UUID(),
-                name: routeName,
-                description: routeDescription,
-                difficulty: routeDifficulty,
-                distance: 0,
-                estimatedTime: 0,
-                landmarks: [],
-                imageURL: nil,
-                makerID: authViewModel.currentUser?.id ?? ""
-            )
-            MapBuilder(
-                route: newRoute,
-                initialCameraPosition: .region(
-                    MKCoordinateRegion(
-                        center: locationManager.location?.coordinate ?? .init(latitude: 0, longitude: 0),
-                        span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    .padding(.top, 16)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    
+                    // ─────────── Inputs ───────────
+                    InputView(
+                        text: $routeName,
+                        title: "Route Name",
+                        placeholder: "Enter route name"
                     )
-                ),
-                isNew: true
-            )
-            .environmentObject(gameViewModel)
-            .environmentObject(locationManager)
-            .environmentObject(authViewModel)
+                    InputView(
+                        text: $routeDescription,
+                        title: "Description",
+                        placeholder: "Enter description"
+                    )
+                    
+                    // Custom picker
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Difficulty")
+                            .foregroundColor(Theme.textOnPrimary)
+                            .fontWeight(.semibold)
+                            .font(.footnote)
+                        Picker("Difficulty", selection: $routeDifficulty) {
+                            Text("Easy").tag("Easy")
+                            Text("Moderate").tag("Moderate")
+                            Text("Hard").tag("Hard")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    
+                    Spacer(minLength: 0)
+                    
+                    // ─────────── Next Button ───────────
+                    Button {
+                        onNext(routeName, routeDescription, routeDifficulty)
+                    } label: {
+                        Text("Next")
+                            .font(.subheadline)
+                            .foregroundColor(Theme.textOnPrimary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(routeName.isEmpty || routeDescription.isEmpty
+                                        ? Color.gray
+                                        : Theme.success)
+                            .cornerRadius(8)
+                    }
+                    .disabled(routeName.isEmpty || routeDescription.isEmpty)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 50)
+            }
+            .scrollDismissesKeyboard(.immediately)
         }
+        .interactiveDismissDisabled()
     }
 }
 
@@ -127,7 +99,7 @@ struct RouteMetaDataScreen: View {
     let vm      = GameViewModel()
     let locMgr  = LocationManager(gameViewModel: vm)
     let authVM  = AuthViewModel()
-    RouteMetaDataScreen()
+    return RouteMetaDataScreen(onNext: { _, _, _ in })
         .environmentObject(vm)
         .environmentObject(locMgr)
         .environmentObject(authVM)
