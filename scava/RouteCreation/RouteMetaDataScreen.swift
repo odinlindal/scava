@@ -6,11 +6,12 @@ struct RouteMetaDataScreen: View {
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
+    @Binding var selectedTab: Int
     
     @State private var routeName: String = ""
     @State private var routeDescription: String = ""
     @State private var routeDifficulty: String = "Moderate"
-    var onNext: (String, String, String) -> Void
+    @State private var showMapBuilder = false
     
     var body: some View {
         ZStack {
@@ -72,7 +73,7 @@ struct RouteMetaDataScreen: View {
                     
                     // ─────────── Next Button ───────────
                     Button {
-                        onNext(routeName, routeDescription, routeDifficulty)
+                        showMapBuilder = true
                     } label: {
                         Text("Next")
                             .font(.subheadline)
@@ -92,6 +93,43 @@ struct RouteMetaDataScreen: View {
             .scrollDismissesKeyboard(.immediately)
         }
         .interactiveDismissDisabled()
+        .fullScreenCover(isPresented: $showMapBuilder) {
+            let route = Route(
+                id: UUID(),
+                name: routeName,
+                description: routeDescription,
+                difficulty: routeDifficulty,
+                distance: 0,
+                estimatedTime: 0,
+                landmarks: [],
+                imageURL: nil,
+                makerID: authViewModel.currentUser?.id ?? ""
+            )
+            
+            // For new routes, use the user's current location
+            let initialCameraPosition: MapCameraPosition = {
+                if let location = locationManager.location?.coordinate {
+                    return .region(MKCoordinateRegion(
+                        center: location,
+                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                    ))
+                }
+                return .automatic
+            }()
+            
+            MapBuilder(
+                route: route,
+                initialCameraPosition: initialCameraPosition,
+                isNew: true,
+                selectedTab: $selectedTab
+            ) {
+                showMapBuilder = false
+                dismiss()
+                Task { await gameViewModel.fetchRoutes() }
+            }
+            .environmentObject(gameViewModel)
+            .environmentObject(locationManager)
+        }
     }
 }
 
@@ -99,7 +137,7 @@ struct RouteMetaDataScreen: View {
     let vm      = GameViewModel()
     let locMgr  = LocationManager(gameViewModel: vm)
     let authVM  = AuthViewModel()
-    return RouteMetaDataScreen(onNext: { _, _, _ in })
+    return RouteMetaDataScreen(selectedTab: .constant(0))
         .environmentObject(vm)
         .environmentObject(locMgr)
         .environmentObject(authVM)

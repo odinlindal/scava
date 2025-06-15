@@ -57,7 +57,7 @@ struct RoutesView: View {
                 }
             }
             .fullScreenCover(isPresented: $isCreatingRoute) {
-                RouteMetaDataScreen()
+                RouteMetaDataScreen(selectedTab: $selectedTab)
                     .environmentObject(gameViewModel)
                     .environmentObject(locationManager)
             }

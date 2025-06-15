@@ -115,19 +115,22 @@ struct MapBuilder: View {
     @EnvironmentObject private var gameViewModel: GameViewModel
     @EnvironmentObject private var locationManager: LocationManager
     @Environment(\.dismiss) private var dismiss
+    @Binding var selectedTab: Int
     
     @State private var spots: [RouteSpotDraft] = []
     @State private var editingSpot: RouteSpotDraft?
     @State private var isExisting: Bool = false
-    @State private var showSuccessAlert = false
+    @State private var showSuccessView = false
     @State private var showErrorAlert = false
+    @State private var showCancelAlert = false
     @State private var errorMessage = ""
     @State private var cameraPosition: MapCameraPosition = .automatic
     
-    init(route: Route, initialCameraPosition: MapCameraPosition, isNew: Bool = false, onComplete: (() -> Void)? = nil) {
+    init(route: Route, initialCameraPosition: MapCameraPosition, isNew: Bool = false, selectedTab: Binding<Int>, onComplete: (() -> Void)? = nil) {
         self.route = route
         self.initialCameraPosition = initialCameraPosition
         self.isNew = isNew
+        self._selectedTab = selectedTab
         self.onComplete = onComplete
         let initialSpots = route.landmarks.map { lm -> RouteSpotDraft in
             var draft = RouteSpotDraft(
@@ -163,44 +166,49 @@ struct MapBuilder: View {
                 .ignoresSafeArea()
                 
                 VStack {
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Theme.primary)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
+                    // Custom header
+                    ZStack {
+                        HStack {
+                            Button {
+                                showCancelAlert = true
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Theme.primary)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 4)
+                            }
+                            .padding(.horizontal, 20)
+                            Spacer()
+                            Text("Add Landmarks")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 5)
+                                .background(Theme.background)
+                                .foregroundColor(Theme.primary)
+                                .cornerRadius(8)
+                                .padding(.horizontal, 10)
+                            Spacer()
+                            Button {
+                                print("search")
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                                    .padding()
+                                    .background(Theme.primary)
+                                    .clipShape(Circle())
+                                    .shadow(radius: 4)
+                            }
+                            .padding(.horizontal, 20)
                         }
-                        .padding(.horizontal, 20)
-                        Spacer()
-                        Text("Add Landmarks")
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 5)
-                            .background(Theme.background)
-                            .foregroundColor(Theme.primary)
-                            .cornerRadius(8)
-                            .padding(.horizontal, 10)
-                        Spacer()
-                        Button {
-                            print("search")
-                        } label: {
-                            Image(systemName: "magnifyingglass")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Theme.primary)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
-                        }
-                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
                     }
-                    .padding(.vertical, 10)
+                    
                     Spacer()
+                    
                     HStack {
                         Button {
                             locationManager.requestLocation()
@@ -249,17 +257,51 @@ struct MapBuilder: View {
                     onCancel: { spots.removeAll { $0.id == spot.id } }
                 )
             }
-            .alert("Route Saved Successfully", isPresented: $showSuccessAlert) {
-                Button("OK", role: .cancel) { 
-                    if onComplete == nil {
-                        dismiss()
+            .fullScreenCover(isPresented: $showSuccessView) {
+                let completedRoute = Route(
+                    id: route.id,
+                    name: route.name,
+                    description: route.description,
+                    difficulty: route.difficulty,
+                    distance: 0,  // TODO: Calculate actual distance
+                    estimatedTime: 0,  // TODO: Calculate estimated time
+                    landmarks: spots.map { spot in
+                        Landmark(
+                            id: UUID(),
+                            name: spot.landmarkName,
+                            latitude: spot.coordinate.latitude,
+                            longitude: spot.coordinate.longitude,
+                            triggerRadius: Double(spot.triggerRadius),
+                            question: spot.question,
+                            correctAnswer: spot.correctAnswer
+                        )
+                    },
+                    imageURL: route.imageURL,
+                    makerID: route.makerID
+                )
+                RouteCreationSuccessView(
+                    route: completedRoute,
+                    isPresented: $showSuccessView,
+                    selectedTab: $selectedTab,
+                    onViewRoutes: {
+                        showSuccessView = false  // Dismiss success view
+                        dismiss()               // Dismiss map builder
+                        onComplete?()          // Call completion handler
                     }
-                }
+                )
             }
             .alert("Failed to create route", isPresented: $showErrorAlert) {
                 Button("OK", role: .cancel) { dismiss() }
             } message: {
                 Text(errorMessage)
+            }
+            .alert("Cancel Route Creation?", isPresented: $showCancelAlert) {
+                Button("No", role: .cancel) { }
+                Button("Yes", role: .destructive) {
+                    dismiss()
+                }
+            } message: {
+                Text("Are you sure you want to cancel? All progress will be lost.")
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -277,19 +319,19 @@ struct MapBuilder: View {
             do {
                 if isNew {
                     try await gameViewModel.createRoute(
-                        base:   route,
-                        with:   spots
+                        base: route,
+                        with: spots
                     )
                 } else {
                     try await gameViewModel.updateRoute(
-                        base:   route,
-                        with:   spots
+                        base: route,
+                        with: spots
                     )
                 }
-                showSuccessAlert = true
-                onComplete?()
+                showSuccessView = true
+                // Don't call onComplete here since we want to keep showing the success view
             } catch {
-                errorMessage   = error.localizedDescription
+                errorMessage = error.localizedDescription
                 showErrorAlert = true
             }
             await gameViewModel.fetchRoutes()
@@ -375,7 +417,8 @@ struct MapBuilder_Previews: PreviewProvider {
                     center: .init(latitude: 0, longitude: 0),
                     span: .init(latitudeDelta: 0.05, longitudeDelta: 0.05)
                 )
-            )
+            ),
+            selectedTab: .constant(0)
         )
         .environmentObject(gameVM)
         .environmentObject(locMgr)

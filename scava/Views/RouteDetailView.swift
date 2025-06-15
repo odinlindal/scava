@@ -14,7 +14,50 @@ struct RouteDetailView: View {
     @State private var showErrorAlert = false
     @State private var deleteAlert = false
     @State private var errorMessage = ""
-
+    
+    private var initialCameraPosition: MapCameraPosition {
+        guard !route.landmarks.isEmpty else {
+            // If no landmarks, use user's location or default to automatic
+            if let location = locationManager.location?.coordinate {
+                return .region(MKCoordinateRegion(
+                    center: location,
+                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                ))
+            }
+            return .automatic
+        }
+        
+        // Calculate a region that contains all landmarks
+        var minLat = Double.infinity
+        var maxLat = -Double.infinity
+        var minLon = Double.infinity
+        var maxLon = -Double.infinity
+        
+        for landmark in route.landmarks {
+            minLat = min(minLat, landmark.latitude)
+            maxLat = max(maxLat, landmark.latitude)
+            minLon = min(minLon, landmark.longitude)
+            maxLon = max(maxLon, landmark.longitude)
+        }
+        
+        let center = CLLocationCoordinate2D(
+            latitude: (minLat + maxLat) / 2,
+            longitude: (minLon + maxLon) / 2
+        )
+        
+        // Add some padding to the span
+        let latDelta = (maxLat - minLat) * 1.5
+        let lonDelta = (maxLon - minLon) * 1.5
+        
+        return .region(MKCoordinateRegion(
+            center: center,
+            span: MKCoordinateSpan(
+                latitudeDelta: max(latDelta, 0.01),  // Ensure minimum zoom level
+                longitudeDelta: max(lonDelta, 0.01)
+            )
+        ))
+    }
+    
     var body: some View {
         ZStack(alignment: .top) {
             Theme.primary.ignoresSafeArea()
@@ -158,13 +201,13 @@ struct RouteDetailView: View {
         .fullScreenCover(isPresented: $showMapBuilder) {
             MapBuilder(
                 route: route,
-                initialCameraPosition: cameraPosition,
+                initialCameraPosition: initialCameraPosition,
                 isNew: false,
-                onComplete: {
-                    showMapBuilder = false
-                    dismiss()
-                }
-            )
+                selectedTab: $selectedTab
+            ) {
+                showMapBuilder = false
+                dismiss()
+            }
             .environmentObject(gameViewModel)
             .environmentObject(locationManager)
             .environmentObject(authViewModel)
