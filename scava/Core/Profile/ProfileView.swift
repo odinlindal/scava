@@ -20,8 +20,6 @@ struct ProfileView: View {
     @EnvironmentObject var gameViewModel: GameViewModel
     @EnvironmentObject var locationManager: LocationManager
 
-    // MARK: - Route Creation Helpers
-    /// If the user just finished entering metadata, build a Route; otherwise nil.
     private var pendingRoute: Route? {
         guard let metadata = routeMetadata else { return nil }
         return Route(
@@ -37,9 +35,6 @@ struct ProfileView: View {
         )
     }
     
-    /// A two-way binding that drives the fullScreenCover:
-    ///  – `get` returns our pendingRoute
-    ///  – `set` simply clears routeMetadata (dismissing the cover)
     private var pendingRouteBinding: Binding<Route?> {
         Binding<Route?>(
             get: { pendingRoute },

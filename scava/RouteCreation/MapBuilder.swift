@@ -350,12 +350,12 @@ private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
         return MKCoordinateRegion(center: .init(latitude: 0, longitude: 0),
                                   span: .init(latitudeDelta: 0.01, longitudeDelta: 0.01))
     }
-    // Center is midpoint
+    
     let center = CLLocationCoordinate2D(
         latitude: (minLat + maxLat) / 2,
         longitude: (minLon + maxLon) / 2
     )
-    // Span covers full range + 30% padding
+    
     let latDelta = (maxLat - minLat) * 1.3
     let lonDelta = (maxLon - minLon) * 1.3
     return MKCoordinateRegion(
@@ -369,12 +369,11 @@ private func boundingRegion(for landmarks: [Landmark]) -> MKCoordinateRegion {
 
 struct MapBuilder_Previews: PreviewProvider {
     static var previews: some View {
-        // 1️⃣ Create a shared GameViewModel + LocationManager
+        
         let gameVM = GameViewModel()
         let locMgr = LocationManager(gameViewModel: gameVM)
-        //gameVM.locationManager = locMgr  // if your VM exposes it
         
-        // 2️⃣ Sample landmarks
+        
         let sampleLandmarks = [
             Landmark(
                 id: UUID(),
@@ -396,7 +395,6 @@ struct MapBuilder_Previews: PreviewProvider {
             )
         ]
         
-        // 3️⃣ A sample Route
         let sampleRoute = Route(
             id: UUID(),
             name: "SF Highlights",
@@ -409,7 +407,6 @@ struct MapBuilder_Previews: PreviewProvider {
             makerID: "preview_user"
         )
         
-        // 4️⃣ The MapBuilder in "creating" mode
         MapBuilder(
             route: sampleRoute,
             initialCameraPosition: .region(
