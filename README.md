@@ -36,13 +36,13 @@
 
 ## 📱 Screenshots
 
-### Main Routes Browser
+### Map View with Active Route
 ![Routes View](screenshots/routeView.PNG)
 
-### Map View with Active Route
+### Map View
 ![Map View](screenshots/mapView.PNG)
 
-### Question Interface
+### Route Details View
 ![Question View](screenshots/routeDetails.PNG)
 
 ### Route Creation Flow
@@ -60,7 +60,7 @@
 ### Sign Up Screen
 ![Sign Up Screen](screenshots/signUpScreen.PNG)
 
-### Route Map
+### Adding Landmarks Map
 ![Route Map](screenshots/routeMap.PNG)
 
 ## 🚀 Getting Started
