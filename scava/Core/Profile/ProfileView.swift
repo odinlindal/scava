@@ -20,6 +20,28 @@ struct ProfileView: View {
     @EnvironmentObject var gameViewModel: GameViewModel
     @EnvironmentObject var locationManager: LocationManager
 
+    private var pendingRoute: Route? {
+        guard let metadata = routeMetadata else { return nil }
+        return Route(
+            id: UUID(),
+            name: metadata.name,
+            description: metadata.description,
+            difficulty: metadata.difficulty,
+            distance: 0,
+            estimatedTime: 0,
+            landmarks: [],
+            imageURL: nil,
+            makerID: authViewModel.currentUser?.id ?? ""
+        )
+    }
+    
+    private var pendingRouteBinding: Binding<Route?> {
+        Binding<Route?>(
+            get: { pendingRoute },
+            set: { _ in routeMetadata = nil }
+        )
+    }
+
     var body: some View {
         NavigationStack {
             if let user = authViewModel.currentUser {
@@ -133,29 +155,11 @@ struct ProfileView: View {
         }
         .background(Theme.background.ignoresSafeArea())
         .fullScreenCover(isPresented: $isCreatingRoute) {
-            RouteMetaDataScreen(onNext: { name, description, difficulty in
-                routeMetadata = (name, description, difficulty)
-                isCreatingRoute = false
-            })
-            .environmentObject(gameViewModel)
-            .environmentObject(locationManager)
+            RouteMetaDataScreen(selectedTab: $selectedTab)
+                .environmentObject(gameViewModel)
+                .environmentObject(locationManager)
         }
-        .fullScreenCover(item: Binding(
-            get: { routeMetadata.map { metadata in
-                Route(
-                    id: UUID(),
-                    name: metadata.name,
-                    description: metadata.description,
-                    difficulty: metadata.difficulty,
-                    distance: 0,
-                    estimatedTime: 0,
-                    landmarks: [],
-                    imageURL: nil,
-                    makerID: authViewModel.currentUser?.id ?? ""
-                )
-            }},
-            set: { _ in routeMetadata = nil }
-        )) { route in
+        .fullScreenCover(item: pendingRouteBinding) { route in
             MapBuilder(
                 route: route,
                 initialCameraPosition: .region(
@@ -165,10 +169,10 @@ struct ProfileView: View {
                     )
                 ),
                 isNew: true,
-                onComplete: {
-                    routeMetadata = nil
-                }
-            )
+                selectedTab: $selectedTab
+            ) {
+                routeMetadata = nil
+            }
             .environmentObject(gameViewModel)
             .environmentObject(locationManager)
             .environmentObject(authViewModel)

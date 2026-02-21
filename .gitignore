@@ -1,1 +1,11 @@
 scava/GoogleService-Info.plist
+
+# API Keys and sensitive configuration
+*.plist
+Config.plist
+APIKeys.plist
+secrets.plist
+
+# Xcode project files that might contain sensitive data
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/

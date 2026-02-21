@@ -507,7 +507,7 @@ class GameViewModel: ObservableObject {
         )
       }
 
-      // 2️⃣ Create a brand new route
+      // Create a brand new route
       func createRoute(
         base: Route,
         with drafts: [RouteSpotDraft]
@@ -522,7 +522,7 @@ class GameViewModel: ObservableObject {
         try await firestoreService.createRoute(newRoute)
       }
 
-      // 3️⃣ Update an existing route
+      // Update an existing route
       func updateRoute(
         base: Route,
         with drafts: [RouteSpotDraft]

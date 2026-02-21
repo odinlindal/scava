@@ -70,7 +70,7 @@ struct ContentView: View {
                         .tag(1)
 
                     Group {
-                        if authViewModel.userSession != nil {
+                        if authViewModel.userSession != nil && authViewModel.currentUser != nil {
                             ProfileView(
                                 selectedTab: $selectedTab,
                                 selectedRoute: $selectedRoute,

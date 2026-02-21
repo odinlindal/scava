@@ -1,7 +1,4 @@
 # Roadmap
-
-Below is a streamlined roadmap for creating a **Swift-based scavenger hunt app** that uses **location-based triggers** and a **question-and-answer flow**. This roadmap focuses on a single local “track” for initial testing and then outlines how to extend it for cloud storage.
-
 ---
 
 ## 1. Project Setup
@@ -75,7 +72,3 @@ Below is a streamlined roadmap for creating a **Swift-based scavenger hunt app**
    - Offer a simple progress bar or fraction (“2 of 5 landmarks found”).
 
 ---
-
-
-### Summary
-This roadmap outlines how to build and test an initial **location-based scavenger hunt** app in Swift, starting with **locally stored** data and progressing towards **cloud-based** storage. By following each stage—location monitoring, question presentation, UI refinement, and final transition to a server—you’ll have a working concept for both small-scale tests and broader, dynamic deployments.
